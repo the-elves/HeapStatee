@@ -12,11 +12,12 @@ MIN_LARGE_SIZE = ((N_SMALL_BINS - SMALLBIN_CORRECTION) * SMALLBIN_WIDTH)
 
 class Chunk:
     size = None
+    prev_size = None
     address = None
     next_chunk = None
     prev_chunk = None
     free = True
-
+    user_address = None
 
 class HeapState:
     allocated_chunks = []
@@ -28,6 +29,29 @@ class HeapState:
     top = None
     startAddress = 0
 
+    #returns None if such chunk is not present
+    def get_chunk_at_offset(self, ad, of):
+        chunk_addr = ad+of;
+        return self.get_chunk_by_address(chunk_addr)
+
+    def get_chunk_by_address(self, ad):
+        for bin in self.fastbin:
+            for ch in bin:
+                if ch.address == ad:
+                    return ch;
+        for bin in self.smallbin:
+            for ch in bin:
+                if ch.address == ad:
+                    return ch;
+        for bin in self.largebin:
+            for ch in bin:
+                if ch.address == ad:
+                    return ch;
+        for bin in self.unsortedbin:
+            for ch in bin:
+                if ch.address == ad:
+                    return ch;
+        return None
     def __init__(self, startAddress):
         self.startAddress = startAddress
         top = startAddress;
@@ -53,12 +77,25 @@ class HeapState:
 
 
 #samll bin helper routines
-    def smallbin_index(self, size):
+    def smallbin_index(self, sz):
         if (SMALLBIN_WIDTH == 16):
-            return ((size>>4) + SMALLBIN_CORRECTION)
+            return ((sz>>4) + SMALLBIN_CORRECTION)
         else:
-            return ((size>>3) + SMALLBIN_CORRECTION)
+            return ((sz>>3) + SMALLBIN_CORRECTION)
 
+    def large_bin_index(self,sz):
+        if ((sz >> 6) <= 38):
+            return 56 + (sz >> 6)
+        elif (( sz >> 9) <= 20):
+            return 91 + (sz >> 9)
+        elif((sz >> 12) <= 10):
+            return 110 + (sz >> 12)
+        elif((sz >> 15) <= 4):
+            return 119 + (sz >> 15)
+        elif((sz >> 18) <= 2):
+            return 124 + (sz >> 18)
+        else:
+            return 126
 
     def allocate_from_smallbin(self):
         idx = self.smallbin_index()
@@ -86,10 +123,30 @@ class HeapState:
         pass
 
     def consolidate(self):
-        pass
+        for bin in self.fastbin:
+            for chunk in bin:
+                next = self.get_chunk_at_offset(chunk.address, chunk.size)
+                new_chunk = Chunk()
+                new_chunk.address = chunk.address
+                if(next != None):
+                    if(next.free):
+                        bin.remove(next)
+                        size = size + next.size
+                prev = self.get_chunk_at_offset(chunk.address, -chunk.prev_size)
+                if(prev != None):
+                    if prev.free:
+                        bin.remove(prev)
+                        size = size + prev.size
+                        address = prev.address
+
+
+
+
+
+
+
 
     def allocate_from_largebin(self):
-
         pass
 
     def allocate_from_unsorted(self):
@@ -107,11 +164,13 @@ class HeapState:
             if (victim != None):
                 return victim
         else:
-
             self.consolidate()
             self.rebin_unsorted_chunks()
-            self.allocate_from_unsorted()
-            
+            victim = self.allocate_from_unsorted()
+            if(victim != None):
+                return victim
+
+
 
 
     def free(self, y):
