@@ -7,8 +7,8 @@ N_SMALL_BINS = 64
 SMALLBIN_WIDTH = MALLOC_ALLIGNMENT
 SMALLBIN_CORRECTION = (MALLOC_ALLIGNMENT > 2*SIZE_OF)
 MIN_LARGE_SIZE = ((N_SMALL_BINS - SMALLBIN_CORRECTION) * SMALLBIN_WIDTH)
-
-
+STARTING_ADDRESS = 0x00000000
+STARTING_SIZE = 4096
 
 class Chunk:
     size = None
@@ -18,6 +18,7 @@ class Chunk:
     prev_chunk = None
     free = True
     user_address = None
+    is_top = False
 
 class HeapState:
     allocated_chunks = []
@@ -52,6 +53,7 @@ class HeapState:
                 if ch.address == ad:
                     return ch;
         return None
+
     def __init__(self, startAddress):
         self.startAddress = startAddress
         top = startAddress;
@@ -59,8 +61,12 @@ class HeapState:
             self.fastbin[i] = []
         for i in range(64) :
             self.smallbin[i] = []
+        top = Chunk
+        top.size = STARTING_SIZE
+        top.address = STARTING_ADDRESS
+        top.is_top = True
 
-#fast bin helper routines
+    #fast bin helper routines
     def get_fast_bin_index(self,size):
         return (size>>3)-2;
 
@@ -76,7 +82,7 @@ class HeapState:
         return victim
 
 
-#samll bin helper routines
+    #samll bin helper routines
     def smallbin_index(self, sz):
         if (SMALLBIN_WIDTH == 16):
             return ((sz>>4) + SMALLBIN_CORRECTION)
@@ -125,20 +131,33 @@ class HeapState:
     def consolidate(self):
         for bin in self.fastbin:
             for chunk in bin:
-                next = self.get_chunk_at_offset(chunk.address, chunk.size)
-                new_chunk = Chunk()
-                new_chunk.address = chunk.address
-                if(next != None):
-                    if(next.free):
-                        bin.remove(next)
-                        size = size + next.size
+                address = chunk.address
+                size = chunk.size
                 prev = self.get_chunk_at_offset(chunk.address, -chunk.prev_size)
-                if(prev != None):
+                add_to_unsorted = True
+                if (prev != None):
                     if prev.free:
+                        # TODO need unlink macro here
                         bin.remove(prev)
-                        size = size + prev.size
+                        size = chunk.size + prev.size
                         address = prev.address
-
+                next = self.get_chunk_at_offset(chunk.address, chunk.size)
+                if (next != None):
+                    if next.is_top:
+                        add_to_unsorted = False
+                        next.address = address
+                        next.size = next.size + size
+                    else:
+                        if(next.free):
+                            #TODO need unlink macro here
+                            bin.remove(next)
+                            size = size + next.size
+                if add_to_unsorted:
+                    bin.remove(chunk)
+                    new_chunk = Chunk
+                    new_chunk.address = address
+                    new_chunk.size =  size
+                    self.unsortedbin.append(new_chunk)
 
 
     def allocate_from_largebin(self):
