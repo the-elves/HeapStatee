@@ -9,13 +9,16 @@ SMALLBIN_CORRECTION = (MALLOC_ALLIGNMENT > 2*SIZE_OF)
 MIN_LARGE_SIZE = ((N_SMALL_BINS - SMALLBIN_CORRECTION) * SMALLBIN_WIDTH)
 STARTING_ADDRESS = 0x00000000
 STARTING_SIZE = 4096
+MALLOC_ALIGN_MASK = MALLOC_ALLIGNMENT - 1
+MIN_SIZE = (32 + MALLOC_ALIGN_MASK) & ~ MALLOC_ALIGN_MASK
+PREV_INUSE = 1
 
 class Chunk:
     size = None
     prev_size = None
     address = None
-    next_chunk = None
-    prev_chunk = None
+    fd = None
+    bk = None
     free = True
     user_address = None
     is_top = False
@@ -31,7 +34,7 @@ class HeapState:
     startAddress = 0
 
     #returns None if such chunk is not present
-    def get_chunk_at_offset(self, ad, of):
+    def get_free_chunk_at_offset(self, ad, of):
         chunk_addr = ad+of;
         return self.get_chunk_by_address(chunk_addr)
 
@@ -113,7 +116,7 @@ class HeapState:
 
         #TODO: Add checks
         #sec check
-        #victim.next_chunk = bin[0].address
+        #victim.fd = bin[0].address
 
         self.allocated_chunks.append(victim)
         #remove
@@ -133,7 +136,7 @@ class HeapState:
             for chunk in bin:
                 address = chunk.address
                 size = chunk.size
-                prev = self.get_chunk_at_offset(chunk.address, -chunk.prev_size)
+                prev = self.get_free_chunk_at_offset(chunk.address, -chunk.prev_size)
                 add_to_unsorted = True
                 if (prev != None):
                     if prev.free:
@@ -141,7 +144,7 @@ class HeapState:
                         bin.remove(prev)
                         size = chunk.size + prev.size
                         address = prev.address
-                next = self.get_chunk_at_offset(chunk.address, chunk.size)
+                next = self.get_free_chunk_at_offset(chunk.address, chunk.size)
                 if (next != None):
                     if next.is_top:
                         add_to_unsorted = False
@@ -164,25 +167,52 @@ class HeapState:
         pass
 
     def allocate_from_unsorted(self):
+
         pass
 
 
     ############### Malloc  ##################
-    def malloc(self, size):
-        if (size <= MAX_FASTBIN_SIZE):
+    def malloc(self, nb):
+        if (nb <= MAX_FASTBIN_SIZE):
             victim = self.allocate_from_fastbin()
             if (victim != None):
                 return victim
-        elif (size <= MIN_LARGE_SIZE):
+        elif (nb <= MIN_LARGE_SIZE):
             victim = self.allocate_from_smallbin()
             if (victim != None):
                 return victim
-        else:
-            self.consolidate()
-            self.rebin_unsorted_chunks()
-            victim = self.allocate_from_unsorted()
-            if(victim != None):
-                return victim
+        size = victim.size
+        self.consolidate()
+        while(True):
+            while(len(self.unsortedbin) !=0):
+                victim = self.unsortedbin[-1]
+                bck = victim.bck
+                if (nb <= MAX_SMALLBIN_SIZE and\
+                        self.unsortedbin[0] == bck and\
+                        victim == self.lastremainder and\
+                        size > nb+MIN_SIZE):
+                    remainder_size = size-nb
+                    remainder = Chunk
+                    remainder.size  = remainder_size
+                    remainder.address = victim.address + size
+                    del self.unsortedbin[0]
+                    self.unsortedbin[0] = remainder
+                    self.lastremainder = remainder
+                    #TODO handle large bins
+                    #TODO handle main arena
+                    victim.size = size | PREV_INUSE
+                    #TODO handle bk and fd
+                    return victim
+                
+
+
+
+
+
+        self.rebin_unsorted_chunks()
+        victim = self.allocate_from_unsorted()
+        if(victim != None):
+            return victim
 
 
 
