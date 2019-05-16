@@ -7,7 +7,7 @@ N_SMALL_BINS = 64
 SMALLBIN_WIDTH = MALLOC_ALLIGNMENT
 SMALLBIN_CORRECTION = (MALLOC_ALLIGNMENT > 2*SIZE_OF)
 MIN_LARGE_SIZE = ((N_SMALL_BINS - SMALLBIN_CORRECTION) * SMALLBIN_WIDTH)
-STARTING_ADDRESS = 0x00000000
+STARTING_ADDRESS = 0x21000
 STARTING_SIZE = 4096
 MALLOC_ALIGN_MASK = MALLOC_ALLIGNMENT - 1
 MIN_SIZE = (32 + MALLOC_ALIGN_MASK) & ~ MALLOC_ALIGN_MASK
@@ -15,17 +15,26 @@ PREV_INUSE = 1
 MAX_ITERATIONS = 10000
 
 class Chunk:
-    size = None
-    prev_size = None
-    address = None
-    fd = None
-    bin = None
-    bk = None
-    free = True
-    is_mmapped = False
-    user_address = None
-    is_top = False
-    bin = None
+    def __init__(self):
+        self.size = None
+        self.prev_size = None
+        self.address = None
+        self.fd = None
+        self.bin = None
+        self.bk = None
+        self.free = True
+        self.is_mmapped = False
+        self.user_address = None
+        self.is_top = False
+        self.bin = None
+
+    def dump_chunk(self):
+        print("[",
+              "\naddress = ",self.address,
+              "\nsize = ",self.size,
+              "\nfree = ", self.free,
+              "\n]")
+
 
 class HeapState:
     allocated_chunks = []
@@ -59,6 +68,8 @@ class HeapState:
             for ch in bin:
                 if ch.address == ad:
                     return ch;
+        if self.top.address == ad:
+            return self.top
         return None
 
     def __init__(self, startAddress):
@@ -70,7 +81,7 @@ class HeapState:
             self.smallbin[i] = []
         top = Chunk
         top.size = STARTING_SIZE
-        top.address = STARTING_ADDRESS
+        top.address = startAddress
         top.is_top = True
 
     #fast bin helper routines
@@ -249,19 +260,11 @@ class HeapState:
                 #sysmalloc
                 self.top.size = self.top.size + 0x21000
 
-
-
-
-
-
         self.rebin_unsorted_chunks()
         victim = self.allocate_from_unsorted()
         if(victim != None):
 
             return victim
-
-
-
 
     def free(self, p):
         #TODO add security checks
@@ -269,7 +272,8 @@ class HeapState:
         for c in self.allocated_chunks:
             if p == c.address:
                 p_chunk = c
-            size = p_chunk.size
+        size = p_chunk.size
+        address = p_chunk.address
         if p_chunk.size < MAX_FASTBIN_SIZE:
             #TODO add checks: "free(): invalid next size (fast)"
             idx = self.get_fast_bin_index(p_chunk.size)
@@ -297,9 +301,51 @@ class HeapState:
                 size = size + prev_size
                 address = prev_chunk.address
                 del(prev_chunk_bin[prev_idx])
-                
+
+            # XXX probable error : previous inuse checked hackily
+            # instead of checking current chunks next_inuse and we are checking if the chunk is present in free lists
+
+            if(self.top.address != next_chunk.address):
+                if next_chunk.free:
+                    next_idx = next_chunk.bin.index(next_chunk)
+                    size = size + next_chunk.size
+                    del(next_chunk.bin[next_idx])
+                #XXX POSSIBLE ERROR : instead of clearing prev inuse bit of nxt chunk
+                #    nothing is done
+                #TODO add checks : free(): corrupted unsorted chunks
+                #XXX POSSIBLE ERROR : fw and bk not used inherently maintained by list
+
+                new_chunk = Chunk
+                new_chunk.size = size
+                new_chunk.address = address
+                new_chunk.free = True
+                new_chunk.bin = self.unsortedbin
+                new_chunk.is_mmapped = False
+                self.unsortedbin.insert(new_chunk, 0)
+            else:
+                size = size + nextsize
+                self.top.size = size
+                self.top.address = address
+
+        #TODO handle unmap_chunk
+
+    def print_fastbins(self):
+        for bin in self.fastbin:
+            print("bin ", self.fastbin.index(bin),"->")
+            for c in bin:
+                c.dump_chunk()
+    def print_smallbins(self):
+        for bin in self.smallbin:
+            print("bin ", self.fastbin.index(bin),"->")
+            for c in bin:
+                c.dump_chunk()
+    def dump(self):
+        print("[+] printing fastbins")
+        self.print_fastbins()
+        self.print_smallbins()
 
 
 
 
-
+h = HeapState(0x0)
+h.malloc(10)
