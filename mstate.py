@@ -16,7 +16,9 @@ PREV_INUSE = 1
 MAX_ITERATIONS = 10000
 DEBUG = True
 class Chunk:
+    id = 0
     def __init__(self):
+        Chunk.id = Chunk.id + 1
         self.size = None
         self.prev_size = None
         self.address = None
@@ -357,6 +359,14 @@ class HeapState:
         for c in self.unsortedbin:
             c.dump_chunk()
 
+    def check_distance(self, size1, size2, d):
+        for c in self.allocated_chunks:
+            if(c.size == size1):
+                for d in self.allocated_chunks:
+                    if d.address - c.address == d:
+                        return (c.address, d.address)
+
+        return None
     def dump(self):
         print("\n[+] printing fastbins")
         self.print_fastbins()
