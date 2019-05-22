@@ -59,10 +59,9 @@ class HeapState:
             for ch in bin:
                 if ch.address == ad:
                     return ch;
-        for bin in self.unsortedbin:
-            for ch in bin:
-                if ch.address == ad:
-                    return ch;
+        for ch in self.unsortedbin:
+            if ch.address == ad:
+                return ch;
         for ch in self.allocated_chunks:
             if ch.address == ad:
                 return ch
@@ -213,7 +212,7 @@ class HeapState:
                 victim = self.unsortedbin[-1]
                 size = victim.size
                 #todo add checks : malloc(): memory corruption
-                #XXX POTENTIAL ERROR bk used
+                #XXX POTENTIAL ERROR not used. Previous element of list used
                 bck = self.unsortedbin[self.unsortedbin.index(victim)-1]
                 if (nb <= MAX_SMALLBIN_SIZE and\
                         self.unsortedbin[0] == bck and\
@@ -221,15 +220,17 @@ class HeapState:
                         size > nb+MIN_SIZE):
                     remainder_size = size-nb
                     remainder = Chunk()
+                    remainder.free = True
                     remainder.size  = remainder_size
                     remainder.address = victim.address + nb
+                    remainder.prev_size = nb
                     del self.unsortedbin[0]
                     self.unsortedbin[0] = remainder
                     self.lastremainder = remainder
                     #TODO handle large bins
                     #TODO handle main arena
                     victim.size = size | PREV_INUSE
-                    #TODO handle bk and fd
+                    #TODO   handle bk and fd
                     self.allocated_chunks.append(victim)
                     return victim.address
                 del(self.unsortedbin[-1])
@@ -262,6 +263,7 @@ class HeapState:
                 remainder.size = remainder_size
                 remainder.address = victim.address+nb
                 remainder.free = True
+                remainder.prev_size = nb
                 self.top = remainder
                 victim.size = nb
                 victim.free = False
@@ -304,10 +306,12 @@ class HeapState:
             #TODO add checks : double free or corruption (top), (out), (!prev)
             nextsize = next_chunk.size
             #TODO add checks : free(): invalid next size (normal)
-            prev_chunk = self.get_chunk_at_offset(p_chunk.address, p_chunk.address - p_chunk.size)
+            prev_chunk = None
+            if p_chunk.address != 0:
+                prev_chunk = self.get_chunk_at_offset(p_chunk.address, -p_chunk.prev_size)
             #XXX probable error : previous inuse checked hackily
             # instead of checking current chunks prev_inuse and we are checking if the chunk is present in free lists
-            if prev_chunk != None:
+            if prev_chunk != None and prev_chunk.free:
                 prev_chunk_bin = prev_chunk.bin
                 prev_idx = prev_chunk_bin.index(prev_chunk)
                 prev_size = prev_chunk.size
