@@ -20,7 +20,7 @@ class Chunk:
     def __init__(self):
         Chunk.id = Chunk.id + 1
         self.size = None
-        self.prev_size = None
+        self.prev_size = 0
         self.address = None
         self.fd = None
         self.bin = None
@@ -194,6 +194,10 @@ class HeapState:
         else:
             return (req + SIZE_SZ + MALLOC_ALIGN_MASK) & ~MALLOC_ALIGN_MASK
 
+    def set_next_size(self, ch, sz):
+        next_chunk = self.get_chunk_at_offset(ch.address, ch.size)
+        next_chunk.prev_size = sz
+
     ############### Malloc  ##################
     def malloc(self, bytes):
         nb = self.request2size(bytes)
@@ -304,9 +308,11 @@ class HeapState:
             #TODO: multiple thereads
             next_chunk = self.get_chunk_at_offset(p_chunk.address, p_chunk.size)
             #TODO add checks : double free or corruption (top), (out), (!prev)
+
             nextsize = next_chunk.size
             #TODO add checks : free(): invalid next size (normal)
             prev_chunk = None
+            new_prev_size = p_chunk.prev_size
             if p_chunk.address != 0:
                 prev_chunk = self.get_chunk_at_offset(p_chunk.address, -p_chunk.prev_size)
             #XXX probable error : previous inuse checked hackily
@@ -315,6 +321,7 @@ class HeapState:
                 prev_chunk_bin = prev_chunk.bin
                 prev_idx = prev_chunk_bin.index(prev_chunk)
                 prev_size = prev_chunk.size
+                new_prev_size = prev_chunk.prev_size
                 size = size + prev_size
                 address = prev_chunk.address
                 del(prev_chunk_bin[prev_idx])
@@ -338,11 +345,14 @@ class HeapState:
                 new_chunk.free = True
                 new_chunk.bin = self.unsortedbin
                 new_chunk.is_mmapped = False
+                new_chunk.prev_size = new_prev_size
+                self.set_next_size(new_chunk, new_chunk.size)
                 self.unsortedbin.insert(0, new_chunk)
             else:
                 size = size + nextsize
                 self.top.size = size
                 self.top.address = address
+                self.top.prev_size = new_prev_size
 
         #TODO handle unmap_chunk
 

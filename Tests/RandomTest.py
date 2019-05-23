@@ -1,10 +1,10 @@
-from Tests.user_functions import *
+from user_functions import *
 from mstate import *
 import random
 
 users = []
 h = HeapState(0x00)
-
+random.seed(10)
 for x in range(1000):
     if random.randint(1, 2) % 2 == 0:
         # allocate
