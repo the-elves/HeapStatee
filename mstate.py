@@ -1,8 +1,8 @@
 import sys
 MAX_SMALLBIN_SIZE = 512
-MAX_FASTBIN_SIZE = 88
-SIZE_SZ = 4
-MALLOC_ALLIGNMENT = 4
+align_of_long_double = 16
+SIZE_SZ = 8
+MALLOC_ALLIGNMENT = align_of_long_double if 2 * SIZE_SZ < align_of_long_double else 2 * SIZE_SZ
 N_BINS = 128
 N_SMALL_BINS = 64
 SMALLBIN_WIDTH = MALLOC_ALLIGNMENT
@@ -14,6 +14,7 @@ MALLOC_ALIGN_MASK = MALLOC_ALLIGNMENT - 1
 MIN_SIZE = (32 + MALLOC_ALIGN_MASK) & ~ MALLOC_ALIGN_MASK
 PREV_INUSE = 1
 MAX_ITERATIONS = 10000
+MAX_FASTBIN_SIZE = 64 * SIZE_SZ / 4
 DEBUG = True
 class Chunk:
     id = 0
@@ -88,7 +89,7 @@ class HeapState:
 
     #fast bin helper routines
     def get_fast_bin_index(self,size):
-        return (size>>3)-2;
+        return ((size>>(4 if SIZE_SZ == 8 else 3)) -2)
 
     def allocate_from_fastbin(self, size):
         idx = self.get_fast_bin_index(size)
@@ -154,25 +155,24 @@ class HeapState:
             for chunk in bin:
                 address = chunk.address
                 size = chunk.size
+                new_prev_size = chunk.prev_size
                 prev = self.get_chunk_at_offset(chunk.address, -chunk.prev_size)
-                add_to_unsorted = True
-                if (prev != None):
-                    if prev.free:
-                        # TODO need unlink macro here
-                        bin.remove(prev)
-                        size = chunk.size + prev.size
-                        address = prev.address
+                add_to_unsorted = False
+                if (prev != None and prev.free):
+                    # TODO need unlink macro here
+                    add_to_unsorted = True
+                    bin.remove(prev)
+                    size = chunk.size + prev.size
+                    address = prev.address
                 next = self.get_chunk_at_offset(chunk.address, chunk.size)
-                if (next != None):
-                    if next.is_top:
-                        add_to_unsorted = False
-                        next.address = address
-                        next.size = next.size + size
-                    else:
-                        if(next.free):
-                            #TODO need unlink macro here
-                            bin.remove(next)
-                            size = size + next.size
+                if next.is_top:
+                    add_to_unsorted = False
+                    next.address = address
+                    next.size = next.size + size
+                elif next.free:
+                    #TODO need unlink macro here
+                    bin.remove(next)
+                    size = size + next.size
                 if add_to_unsorted:
                     bin.remove(chunk)
                     new_chunk = Chunk()
@@ -185,7 +185,6 @@ class HeapState:
         pass
 
     def allocate_from_unsorted(self):
-
         pass
 
     def request2size(self, req):
@@ -204,10 +203,12 @@ class HeapState:
         if (nb <= MAX_FASTBIN_SIZE):
             victim = self.allocate_from_fastbin(nb)
             if (victim != None):
+                victim.free = False
                 return victim.address
         elif (nb <= MIN_LARGE_SIZE):
             victim = self.allocate_from_smallbin(nb)
             if (victim != None):
+                victim.free = False
                 return victim.address
         self.consolidate()
         while True:
@@ -236,6 +237,7 @@ class HeapState:
                     victim.size = size | PREV_INUSE
                     #TODO   handle bk and fd
                     self.allocated_chunks.append(victim)
+                    victim.free = False
                     return victim.address
                 del(self.unsortedbin[-1])
                 if size == nb:
@@ -243,6 +245,7 @@ class HeapState:
                     victim.free=False
                     #TODO add checks : check_malloced_chunk(av, victim, nb);
                     self.allocated_chunks.append(victim)
+                    victim.free = False
                     return victim.address
 
                 #place chunk in bins
@@ -296,7 +299,6 @@ class HeapState:
             #TODO add checks: "free(): invalid next size (fast)"
             idx = self.get_fast_bin_index(p_chunk.size)
             fb = self.fastbin[idx]
-            p_chunk.free = True
             fb = [p_chunk]+fb
             self.fastbin[idx]= fb
             p_chunk.bin = fb
@@ -353,6 +355,9 @@ class HeapState:
                 self.top.size = size
                 self.top.address = address
                 self.top.prev_size = new_prev_size
+
+            #TODO Add check for consolidation threshold
+            self.consolidate()
 
         #TODO handle unmap_chunk
 
