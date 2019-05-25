@@ -157,23 +157,29 @@ class HeapState:
                 size = chunk.size
                 new_prev_size = chunk.prev_size
                 prev = self.get_chunk_at_offset(chunk.address, -chunk.prev_size)
-                add_to_unsorted = False
+                # add_to_unsorted = False
                 if (prev != None and prev.free):
                     # TODO need unlink macro here
-                    add_to_unsorted = True
-                    bin.remove(prev)
+                    # add_to_unsorted = True
+                    prev_bin = prev.bin
+                    prev_bin.remove(prev)
                     size = chunk.size + prev.size
                     address = prev.address
+                    new_prev_size = prev.prev_size
                 next = self.get_chunk_at_offset(chunk.address, chunk.size)
                 if next.is_top:
-                    add_to_unsorted = False
-                    next.address = address
-                    next.size = next.size + size
+                    # add_to_unsorted = False
+                    size = size + next.size
+                    self.top.address = address
+                    self.top.size = size
+                    self.top.prev_size = new_prev_size
+                    self.top.
                 elif next.free:
                     #TODO need unlink macro here
-                    bin.remove(next)
+                    current_bin = next.bin
+                    current_bin.remove(next)
                     size = size + next.size
-                if add_to_unsorted:
+                # if add_to_unsorted:
                     bin.remove(chunk)
                     new_chunk = Chunk()
                     new_chunk.address = address
