@@ -1,12 +1,12 @@
 import sys
-MAX_SMALLBIN_SIZE = 512
+from Colors import bcolors
 align_of_long_double = 16
 SIZE_SZ = 8
 MALLOC_ALLIGNMENT = align_of_long_double if 2 * SIZE_SZ < align_of_long_double else 2 * SIZE_SZ
 N_BINS = 128
 N_SMALL_BINS = 64
 SMALLBIN_WIDTH = MALLOC_ALLIGNMENT
-SMALLBIN_CORRECTION = (MALLOC_ALLIGNMENT > 2 * SIZE_SZ)
+SMALLBIN_CORRECTION = 1 if (MALLOC_ALLIGNMENT > 2 *SIZE_SZ ) else 0;
 MIN_LARGE_SIZE = ((N_SMALL_BINS - SMALLBIN_CORRECTION) * SMALLBIN_WIDTH)
 STARTING_ADDRESS = 0
 STARTING_SIZE = 0
@@ -15,7 +15,9 @@ MIN_SIZE = (32 + MALLOC_ALIGN_MASK) & ~ MALLOC_ALIGN_MASK
 PREV_INUSE = 1
 MAX_ITERATIONS = 10000
 MAX_FASTBIN_SIZE = 64 * SIZE_SZ / 4
+FASTBIN_CONSOLIDATION_THRESHOLD = 65536
 DEBUG = True
+MAX_SMALLBIN_SIZE = ((N_SMALL_BINS - SMALLBIN_CORRECTION) * SMALLBIN_WIDTH)
 class Chunk:
     id = 0
     def __init__(self):
@@ -33,11 +35,13 @@ class Chunk:
         self.bin = None
 
     def dump_chunk(self):
-        print("[",
-              "\naddress = ",self.address,
-              "\nsize = ",self.size,
-              "\nfree = ", self.free,
-              "\n]")
+        print "[" , \
+              "address = ",self.address, \
+              "size = ",self.size, \
+              "free = ", self.free, \
+              "prev_size = ", self.prev_size, \
+              "end address = ", self.address+self.size, \
+              "]"
 
 
 class HeapState:
@@ -153,38 +157,51 @@ class HeapState:
     def consolidate(self):
         for bin in self.fastbin:
             for chunk in bin:
+                bin.remove(chunk)
                 address = chunk.address
                 size = chunk.size
                 new_prev_size = chunk.prev_size
                 prev = self.get_chunk_at_offset(chunk.address, -chunk.prev_size)
                 # add_to_unsorted = False
-                if (prev != None and prev.free):
-                    # TODO need unlink macro here
-                    # add_to_unsorted = True
-                    prev_bin = prev.bin
-                    prev_bin.remove(prev)
-                    size = chunk.size + prev.size
-                    address = prev.address
-                    new_prev_size = prev.prev_size
+                if(chunk.address != 0 and prev == None):
+                    print "prev not found error"
+                    sys.exit("prev is none")
+                if(chunk.address != 0):
+                    if (prev.free):
+                        # TODO need unlink macro here
+                        # add_to_unsorted = True
+                        prev_bin = prev.bin
+                        prev_bin.remove(prev)
+                        size = chunk.size + prev.size
+                        address = prev.address
+                        new_prev_size = prev.prev_size
                 next = self.get_chunk_at_offset(chunk.address, chunk.size)
-                if next.is_top:
+                # if next is None:
+                #     exit("Next none in cosolidate")
+                if next.address == self.top.address:
                     # add_to_unsorted = False
                     size = size + next.size
                     self.top.address = address
                     self.top.size = size
                     self.top.prev_size = new_prev_size
-                    self.top.
-                elif next.free:
-                    #TODO need unlink macro here
-                    current_bin = next.bin
-                    current_bin.remove(next)
-                    size = size + next.size
-                # if add_to_unsorted:
-                    bin.remove(chunk)
+                    self.top.free = True
+                else :
+                    if next.free:
+                        #TODO need unlink macro here
+                        current_bin = next.bin
+                        current_bin.remove(next)
+                        size = size + next.size
                     new_chunk = Chunk()
                     new_chunk.address = address
-                    new_chunk.size =  size
-                    self.unsortedbin.append(new_chunk)
+                    new_chunk.size = size
+                    new_chunk.free = True
+                    new_chunk.prev_size = new_prev_size
+                    new_chunk.bin = self.unsortedbin
+                    self.set_next_size(new_chunk, new_chunk.size)
+                    self.unsortedbin.insert(0, new_chunk)
+
+
+
 
 
     def allocate_from_largebin(self):
@@ -216,7 +233,8 @@ class HeapState:
             if (victim != None):
                 victim.free = False
                 return victim.address
-        self.consolidate()
+        else:
+            self.consolidate()
         while True:
             iteration = 0
             while len(self.unsortedbin) !=0:
@@ -224,9 +242,8 @@ class HeapState:
                 size = victim.size
                 #todo add checks : malloc(): memory corruption
                 #XXX POTENTIAL ERROR not used. Previous element of list used
-                bck = self.unsortedbin[self.unsortedbin.index(victim)-1]
                 if (nb <= MAX_SMALLBIN_SIZE and\
-                        self.unsortedbin[0] == bck and\
+                        len(self.unsortedbin) == 1 and\
                         victim == self.lastremainder and\
                         size > nb+MIN_SIZE):
                     remainder_size = size-nb
@@ -235,17 +252,21 @@ class HeapState:
                     remainder.size  = remainder_size
                     remainder.address = victim.address + nb
                     remainder.prev_size = nb
-                    del self.unsortedbin[0]
-                    self.unsortedbin[0] = remainder
+                    self.set_next_size(remainder, remainder.size)
+                    self.unsortedbin.remove(self.unsortedbin[-1])
+                    remainder.bin=self.unsortedbin
+                    self.unsortedbin.insert(0, remainder)
                     self.lastremainder = remainder
                     #TODO handle large bins
                     #TODO handle main arena
-                    victim.size = size | PREV_INUSE
+                    victim.size = nb
                     #TODO   handle bk and fd
                     self.allocated_chunks.append(victim)
                     victim.free = False
                     return victim.address
-                del(self.unsortedbin[-1])
+
+
+                self.unsortedbin.remove(self.unsortedbin[-1])
                 if size == nb:
                     # XXX this chunks inuse set instead of next chunks prev_inuse
                     victim.free=False
@@ -265,7 +286,36 @@ class HeapState:
                 if(iteration > MAX_ITERATIONS):
                     break;
 
-                #TODO handle largebin
+            idx = self.smallbin_index(nb)
+            while(idx < len(self.smallbin)):
+                bin = self.smallbin[idx]
+                if(len(bin) == 0):
+                    idx+=1
+                    continue
+                ch = bin[-1]
+                size = ch.size
+                remainder_size = size-nb
+                bin.remove(ch)
+                if remainder_size < MIN_SIZE:
+                    ch.free = False
+                else:
+                    rem_add = ch.address + nb
+                    new_chunk = Chunk()
+                    new_chunk.address = rem_add
+                    new_chunk.size = remainder_size
+                    new_chunk.free = True
+                    new_chunk.prev_size = nb
+                    new_chunk.bin =self.unsortedbin
+                    self.set_next_size(new_chunk, new_chunk.size)
+                    self.unsortedbin.insert(0,new_chunk)
+                    self.lastremainder = new_chunk
+                    ch.size = nb
+                ch.free = False
+                self.allocated_chunks.append(ch)
+                return ch.address
+            #TODO handle largebin
+
+
 
             #use top
             victim = self.top
@@ -278,6 +328,7 @@ class HeapState:
                 remainder.free = True
                 remainder.prev_size = nb
                 self.top = remainder
+                self.top.is_top = True
                 victim.size = nb
                 victim.free = False
                 self.allocated_chunks.append(victim)
@@ -297,11 +348,12 @@ class HeapState:
                 break
 
         if p_chunk is None:
-            sys.exit("freed chunk not found in allocated chunks")
+            print "freed chunk not found in allocated chunks"
+            sys.exit(0)
         self.allocated_chunks.remove(p_chunk)
         size = p_chunk.size
         address = p_chunk.address
-        if p_chunk.size < MAX_FASTBIN_SIZE:
+        if p_chunk.size <= MAX_FASTBIN_SIZE:
             #TODO add checks: "free(): invalid next size (fast)"
             idx = self.get_fast_bin_index(p_chunk.size)
             fb = self.fastbin[idx]
@@ -316,23 +368,25 @@ class HeapState:
             #TODO: multiple thereads
             next_chunk = self.get_chunk_at_offset(p_chunk.address, p_chunk.size)
             #TODO add checks : double free or corruption (top), (out), (!prev)
-
             nextsize = next_chunk.size
             #TODO add checks : free(): invalid next size (normal)
             prev_chunk = None
             new_prev_size = p_chunk.prev_size
             if p_chunk.address != 0:
                 prev_chunk = self.get_chunk_at_offset(p_chunk.address, -p_chunk.prev_size)
-            #XXX probable error : previous inuse checked hackily
-            # instead of checking current chunks prev_inuse and we are checking if the chunk is present in free lists
-            if prev_chunk != None and prev_chunk.free:
-                prev_chunk_bin = prev_chunk.bin
-                prev_idx = prev_chunk_bin.index(prev_chunk)
-                prev_size = prev_chunk.size
-                new_prev_size = prev_chunk.prev_size
-                size = size + prev_size
-                address = prev_chunk.address
-                del(prev_chunk_bin[prev_idx])
+                #XXX probable error : previous inuse checked hackily
+                # instead of checking current chunks prev_inuse and we are checking if the chunk is present in free lists
+                if prev_chunk == None:
+                    print "prev_chunk is none in free"
+                    sys.exit("prev_chunk is none in free")
+                if prev_chunk.free:
+                    prev_chunk_bin = prev_chunk.bin
+                    prev_idx = prev_chunk_bin.index(prev_chunk)
+                    prev_size = prev_chunk.size
+                    new_prev_size = prev_chunk.prev_size
+                    size = size + prev_size
+                    address = prev_chunk.address
+                    del(prev_chunk_bin[prev_idx])
 
             # XXX probable error : previous inuse checked hackily
             # instead of checking current chunks next_inuse and we are checking if the chunk is present in free lists
@@ -362,20 +416,24 @@ class HeapState:
                 self.top.address = address
                 self.top.prev_size = new_prev_size
 
-            #TODO Add check for consolidation threshold
-            self.consolidate()
+            if(size > FASTBIN_CONSOLIDATION_THRESHOLD):
+                self.consolidate()
 
         #TODO handle unmap_chunk
 
     def print_fastbins(self):
         i=0
         for bin in self.fastbin:
+            if len(bin) == 0:
+                continue
             print("bin ", i,"->")
             i += 1
             for c in bin:
                 c.dump_chunk()
     def print_smallbins(self):
         for bin in self.smallbin:
+            if len(bin) == 0:
+                continue
             print("bin ", self.smallbin.index(bin),"->")
             for c in bin:
                 c.dump_chunk()
@@ -384,24 +442,38 @@ class HeapState:
         for c in self.unsortedbin:
             c.dump_chunk()
 
-    def check_distance(self, size1, size2, d):
+    def check_distance(self, sz, sz2,  dist):
+        size1 = self.request2size(sz)
+        size2 = self.request2size(sz2)
         for c in self.allocated_chunks:
             if(c.size == size1):
                 for d in self.allocated_chunks:
-                    if d.address - c.address == d:
-                        return (c.address, d.address)
+                    if d.size == size2:
+                        if abs(d.address - c.address) == dist:
+                            return (c.address, d.address)
+
+    def check_range(self, sz, sz2, low, high):
+        size1 = self.request2size(sz)
+        size2 = self.request2size(sz2)
+        for c in self.allocated_chunks:
+            if (c.size == size1):
+                for d in self.allocated_chunks:
+                    if d.size == size2:
+                        dist = abs(d.address - c.address)
+                        if dist >= low and dist<high:
+                            return (c.address, d.address)
 
         return None
     def dump(self):
-        print("\n[+] printing fastbins")
+        print "\n"+bcolors.RED+"[+] printing fastbins"
         self.print_fastbins()
-        print("\n[+] printing smallbins")
+        print "\n[+]"+bcolors.BLUE+" printing smallbins"
         self.print_smallbins()
-        print("\n[+] Printing unsorted bins")
+        print "\n[+]"+bcolors.PINK+bcolors.BOLD+" Printing unsorted bins"
         self.print_unsortedbin()
-        print("\n[+] printing top chunk")
+        print "\n[+] printing top chunk"
         self.top.dump_chunk()
-        print("\n[+] printing allocated chunk")
+        print "\n[+] "+bcolors.ENDC+"printing allocated chunk"
         for c in self.allocated_chunks:
             c.dump_chunk()
 
