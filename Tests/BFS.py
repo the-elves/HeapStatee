@@ -22,14 +22,14 @@ q = [root]
 
 node_count = 1
 while len(q) > 0:
-    print "iteration: " + str(node_count)
+    print("iteration: " + str(node_count))
     node_count += 1
     current = q.pop(0)
     # current.state.dump()
-    print current.type
+    print( current.type)
     a = current.state.check_distance(110, 44,528)
     if a != None:
-        print "found ", a[0], a[1]
+        print("found ", a[0], a[1])
         break
     create_child = copy.deepcopy(current)
     ui = User_Info(create_child.state)
