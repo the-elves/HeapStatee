@@ -1,0 +1,6 @@
+we want the distance between chunk c1 and c2 to be d
+
+1. Allocations can happen from one of the list or from one of the top elements
+2. From the size of the allocation we know the which bin will be checked for allocation
+3. If the allocation size maps to some bin but that bin is empty, the allocation will happen from top
+4. If the allocation size is bigger than any of the bin, the allocation will happen from top chunk

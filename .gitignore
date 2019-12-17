@@ -1,2 +1,7 @@
+Outputs
+.log
+.o
 .idea
 venv
+.pyc
+

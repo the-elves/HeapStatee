@@ -35,13 +35,13 @@ class Chunk:
         self.bin = None
 
     def dump_chunk(self):
-        print ("[" , \
+        print "[" , \
               "address = ",self.address, \
               "size = ",self.size, \
               "free = ", self.free, \
               "prev_size = ", self.prev_size, \
               "end address = ", self.address+self.size, \
-              "]")
+              "]"
 
 
 class HeapState:
@@ -164,7 +164,7 @@ class HeapState:
                 prev = self.get_chunk_at_offset(chunk.address, -chunk.prev_size)
                 # add_to_unsorted = False
                 if(chunk.address != 0 and prev == None):
-                    print ("prev not found error")
+                    print "prev not found error"
                     sys.exit("prev is none")
                 if(chunk.address != 0):
                     if (prev.free):
@@ -348,7 +348,7 @@ class HeapState:
                 break
 
         if p_chunk is None:
-            print ("freed chunk not found in allocated chunks")
+            print "freed chunk not found in allocated chunks"
             sys.exit(0)
         self.allocated_chunks.remove(p_chunk)
         size = p_chunk.size
@@ -377,7 +377,7 @@ class HeapState:
                 #XXX probable error : previous inuse checked hackily
                 # instead of checking current chunks prev_inuse and we are checking if the chunk is present in free lists
                 if prev_chunk == None:
-                    print ("prev_chunk is none in free")
+                    print "prev_chunk is none in free"
                     sys.exit("prev_chunk is none in free")
                 if prev_chunk.free:
                     prev_chunk_bin = prev_chunk.bin
@@ -465,15 +465,15 @@ class HeapState:
 
         return None
     def dump(self):
-        print ("\n"+bcolors.RED+"[+] printing fastbins")
+        print "\n"+bcolors.RED+"[+] printing fastbins"
         self.print_fastbins()
-        print ("\n[+]"+bcolors.BLUE+" printing smallbins")
+        print "\n[+]"+bcolors.BLUE+" printing smallbins"
         self.print_smallbins()
-        print ("\n[+]"+bcolors.PINK+bcolors.BOLD+" Printing unsorted bins")
+        print "\n[+]"+bcolors.PINK+bcolors.BOLD+" Printing unsorted bins"
         self.print_unsortedbin()
-        print ("\n[+] printing top chunk")
+        print "\n[+] printing top chunk"
         self.top.dump_chunk()
-        print ("\n[+] "+bcolors.ENDC+"printing allocated chunk")
+        print "\n[+] "+bcolors.ENDC+"printing allocated chunk"
         for c in self.allocated_chunks:
             c.dump_chunk()
 
