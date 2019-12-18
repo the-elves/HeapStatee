@@ -2,75 +2,70 @@
 from mstate import *
 from Tests.user_functions import *
 from enum import Enum
-
-c1_size = HeapState.request2size(110)
-c2_size = HeapState.request2size(44)
+import copy
+tempheap = HeapState(0)
+c1_size = tempheap.request2size(110)
+c2_size = tempheap.request2size(44)
 d = 512
-users = []
 h = HeapState(0)
 gamma = 0.9
-
+RECURSIVE_DEPTH = 11
 class API(Enum):
     ALL = 1
     DEL = 2
-class Action
-    def __init__(self):
-        self.act:API
-        self.free_no = 0
+
+class Action:
+    def __init__(self, a, f: int):
+        self.act = a
+        self.free_no = f
 
 class State:
-    def __init__(self):
-        self.s : HeapState
-        self.v: int
+    def __init__(self, h: HeapState):
+        self.users = []
+        self.s = h
+        self.v = 0
 
-def reward(s: HeapState, a: Action):
+def end_goal(s: State, a: Action):
+    _h = s.s
+    for c1 in _h.allocated_chunks:
+        if c1.size == c1_size:
+            for c2 in h.allocated_chunks:
+                if c2.size == c2_size:
+                    if (c2.address - c1.address) == d:
+                        return 1
+    return 0
 
-    if a.act == API.ALL:
-        for c in s.allocated_chunks:
-            if c.address == c1_size:
-                user: User_Info = users[a.free_no]
-                if user.first_name - c.address <= d:
-                    return -1
-                else:
-                    return +1
-
-    elif a.act == API.DEL:
-        for c in s.allocated_chunks:
-            if c.size == c1_size:
-                if c2_size <= MAX_FASTBIN_SIZE:
-                    c2idx = s.get_fast_bin_index(c2_size)
-                    if len(s.fastbin) != 0:
-                        if s.fastbin[c2idx][0].address - c.address == d:
-                            return 2
-                        else:
-                            if s.fastbin[c2idx][0].address - c.address > d:
-                                return -1
-                            elif s.fastbin[c2idx][0].address - c.address < d-c2_size:
-                                return 1
-                else:
-                    c2idx = s.smallbin_index(c2_size)
-                    victim_bin = s.smallbin[c2idx]
-                    if len(s.smallbin) != 0:
-                        if s.smallbin[c2idx][-1].address - c.address == d:
-                            return 2
-                        else:
-                            if s.smallbin[c2idx][-1].address - c.address > d:
-                                return -1
-                            elif s.smallbin[c2idx][-1].address - c.address < d-c2_size:
-                                return 1
-                #bins could not allocate. That means top will be used
-                #this means top will be pushed further apart
-                if c.address - s.top.address < d-c2_size:
-                    return 1
-                else:
-                    return -1
-
-
-def calculate_v(s: HeapState, depth):
-    #XXX May be chunks not duplicated
-    if depth == 100:
+#TODO Memoize
+def calculate_v(s: State, depth: int, reward):
+    print("Depth = ", depth)
+    if depth == RECURSIVE_DEPTH:
         return 0
-    r = reward(s, )
+    else:
+        # action allocate
+        a = Action(API.ALL, -1)
+        rallocate = reward(s, a)
+        newstate = copy.deepcopy(s)
+        u = User_Info(newstate.s)
+        u.create_user()
+        newstate.users.append(u)
+        future_v = calculate_v(newstate, depth + 1, reward)
+        accum_v = rallocate + gamma * future_v
+        # action delete user
+        for i in range(len(s.users)):
+            a = Action(API.DEL, i)
+            rdel = reward(s, a)
+            newstate = copy.deepcopy(s)
+            u = newstate.users[i]
+            u.update_heap(newstate.s)
+            u.delete_user()
+            newstate.users.remove(u)
+            future_v = calculate_v(newstate, depth + 1, reward)
+            accum_v = accum_v + rdel +  gamma * future_v
+        return accum_v
 
-
-
+def main():
+    h = HeapState(0)
+    initstate = State(h)
+    initstate.v = calculate_v(initstate, 0, end_goal)
+    print (initstate.v)
+main()
