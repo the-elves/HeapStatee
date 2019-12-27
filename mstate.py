@@ -35,11 +35,11 @@ class Chunk:
         self.bin = None
 
 
-    def __eq__(self, other):
-        if self.size == other.size and self.address == other.address and \
-           self.free == other.free:
-            return True
-        return False
+    # def __eq__(self, other):
+    #     if self.size == other.size and self.address == other.address and \
+    #        self.free == other.free:
+    #         return True
+    #     return False
 
 
     def dump_chunk(self):

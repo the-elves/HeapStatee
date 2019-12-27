@@ -1,21 +1,24 @@
+#include<stdio.h>
 #include "api.h"
 #include <stdlib.h>
-User create_user()
+extern int last_user;
+void create_user()
 {
-		User u;
-		u.first_name=(char *)malloc(110);
-		u.last_name=(char *)malloc(39);
-		u.house_no=(char *)malloc(44);
-		u.street = (char *)malloc(128);
-		u.city_state = (char *)malloc(127);
-		return u;
+		users[last_user].first_name=(char *)malloc(110);
+		printf("firstname address: %llx\n", users[last_user].first_name);
+		users[last_user].last_name=(char *)malloc(39);
+		users[last_user].house_no=(char *)malloc(44);
+		users[last_user].street = (char *)malloc(128);
+		users[last_user].city_state = (char *)malloc(127);
+		last_user++;
 }
 
-void delete_user(User u)
+void delete_user(int user_no)
 {
-		free(u.house_no);
-		free(u.street);
-		free(u.city_state);
-		free(u.last_name);
-		free(u.first_name);
+		printf("Freeing user %d\n", user_no);
+		free(users[user_no].house_no);
+		free(users[user_no].street);
+		free(users[user_no].city_state);
+		free(users[user_no].last_name);
+		free(users[user_no].first_name);
 }
