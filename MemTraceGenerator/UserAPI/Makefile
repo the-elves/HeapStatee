@@ -1,4 +1,4 @@
-CC = /home/ajinkya/College/Guided_HML/glibc/compile.sh
+CC = ../../../compile.sh
 #CC = gcc
 all: driver.c
 	$(CC) driver.c api.o -o driver.out -g -no-pie -fno-PIC

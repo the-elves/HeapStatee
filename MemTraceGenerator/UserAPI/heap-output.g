@@ -1,15 +1,21 @@
 gef config context.enable 0
-b *0x0000000000400b4a
+b *(main + 228)
 commands
 heap bins
+print "==Chunks=="
 heap chunks
+print "==Chunks Done=="
+call fflush(0)
 c
 end
 
-b *0x0000000000400ba5
+b *(main + 319)
 commands
 heap bins
+print "==Chunks=="
 heap chunks
+print "==Chunks Done=="
+call fflush(0)
 c
 end
 

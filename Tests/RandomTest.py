@@ -9,8 +9,8 @@ seed = random.randrange(sys.maxsize)
 print ("Seed is ", seed)
 random.seed(1)
 allocation_number = 0
-f = open("/home/ajinkya/College/Guided_HML/HeapStatee/MemTraceGenerator/UserAPI/trace", "w")
-for x in range(10000):
+f = open("../MemTraceGenerator/UserAPI/trace", "w")
+for x in range(100):
     print ("Iteration ",x)
     if random.randint(1, 2) % 2 == 0:
         print ('Allocate ', len(users))
