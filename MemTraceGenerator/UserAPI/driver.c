@@ -22,6 +22,7 @@ int increaseStackLimit()
 
 int main(int argc, char *argv[])
 {
+
 	increaseStackLimit();
 	User users[NUM_USERS];
 	FILE *fp;
@@ -29,6 +30,7 @@ int main(int argc, char *argv[])
 	char command [COMMAND_SIZE];
 	int last_user = 0;
 	while( fgets(command, COMMAND_SIZE, fp) != NULL){
+	  getchar();
 			printf("command %s", command);
 			if(command[0] == 'f'){
 					int free_number = atoi(command+2);
