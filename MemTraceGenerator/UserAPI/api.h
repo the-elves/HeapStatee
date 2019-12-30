@@ -1,3 +1,6 @@
+#define NUM_USERS 10
+static int last_user = 0;
+
 typedef struct User {
 		char *first_name;
 		char *last_name;
@@ -6,6 +9,7 @@ typedef struct User {
 		char *city_state;
 }User;
 
-User create_user();
+static User users[NUM_USERS];
+void create_user();
 
-void delete_user(User user);
+void delete_user(int user_no);

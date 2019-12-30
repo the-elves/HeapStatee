@@ -4,6 +4,7 @@ class User_Info:
     ACTIONS = [128, 48, 64, 144]
 
     def __init__(self, h):
+        self.allocation_num = 0
         self.h = h
         self.first_name = None
         self.last_name = None
