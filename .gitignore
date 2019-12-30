@@ -1,8 +1,12 @@
+testoutput
+*.out
+output.txt
+outputfile
 __pycache__
 Outputs
-.log
-.o
-.idea
+*.log
+*.o
+*.idea
 venv
-.pyc
+*.pyc
 
