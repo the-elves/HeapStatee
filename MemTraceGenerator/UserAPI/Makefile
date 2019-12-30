@@ -1,5 +1,7 @@
+CC = /home/ajinkya/College/Guided_HML/glibc/compile.sh
+#CC = gcc
 all: driver.c
-	gcc driver.c api.o -o driver.out -g 
+	$(CC) driver.c api.o -o driver.out -g 
 driver.c: api.o api.h
 api.o: api.c
-	gcc api.c -c -g
+	$(CC) api.c -c -g
