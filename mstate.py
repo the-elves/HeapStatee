@@ -6,7 +6,7 @@ MALLOC_ALLIGNMENT = align_of_long_double if 2 * SIZE_SZ < align_of_long_double e
 N_BINS = 128
 N_SMALL_BINS = 64
 SMALLBIN_WIDTH = MALLOC_ALLIGNMENT
-SMALLBIN_CORRECTION = 1 if (MALLOC_ALLIGNMENT > 2 *SIZE_SZ ) else 0;
+SMALLBIN_CORRECTION = 1 if (MALLOC_ALLIGNMENT > 2 *SIZE_SZ ) else 0
 MIN_LARGE_SIZE = ((N_SMALL_BINS - SMALLBIN_CORRECTION) * SMALLBIN_WIDTH)
 STARTING_ADDRESS = 0
 STARTING_SIZE = 0
@@ -63,18 +63,18 @@ class HeapState:
         for bin in self.fastbin:
             for ch in bin:
                 if ch.address == ad:
-                    return ch;
+                    return ch
         for bin in self.smallbin:
             for ch in bin:
                 if ch.address == ad:
-                    return ch;
+                    return ch
         for bin in self.largebin:
             for ch in bin:
                 if ch.address == ad:
-                    return ch;
+                    return ch
         for ch in self.unsortedbin:
             if ch.address == ad:
-                return ch;
+                return ch
         for ch in self.allocated_chunks:
             if ch.address == ad:
                 return ch
@@ -92,7 +92,7 @@ class HeapState:
         self.startAddress = startAddress
         for i in range(10):
             self.fastbin.append([])
-        for i in range(64) :
+        for i in range(64):
             self.smallbin.append([])
         self.top = Chunk()
         self.top.size = STARTING_SIZE
@@ -278,7 +278,7 @@ class HeapState:
                 if size == nb:
                     # XXX this chunks inuse set instead of next chunks prev_inuse
                     victim.free=False
-                    #TODO add checks : check_malloced_chunk(av, victim, nb);
+                    #TODO add checks : check_malloced_chunk(av, victim, nb)
                     self.allocated_chunks.append(victim)
                     victim.free = False
                     return victim.address
@@ -292,7 +292,7 @@ class HeapState:
 
                 iteration = iteration + 1
                 if(iteration > MAX_ITERATIONS):
-                    break;
+                    break
 
             idx = self.smallbin_index(nb)
             while(idx < len(self.smallbin)):
