@@ -1,9 +1,8 @@
 import sys
 import os
 sys.path.append("/home/" + os.environ["USERNAME"] + "/College/Guided_HML/HeapStatee")
-print(sys.path[-1])
 from mstate import Chunk
-exit()
+
 f = open(sys.argv[1])
 line = f.readline()
 
@@ -22,28 +21,142 @@ def contains(line, subst):
     else:
         return True
 
+    
+def find_pos_after(st, sub):
+    return st.find(sub)+len(sub)
+
+
+def parse_chunk(line):
+    pchunks = find_pos_after(line, "Chunk(addr=")
+    pchunkse = line.find(", size=")
+    chunk_addr = int(line[pchunks:pchunkse], 0)
+    
+    pchunksize = find_pos_after(line, ", size=")
+    pchunksizee = line.find(", flags=")
+    size = int(line[pchunksize:pchunksizee],0)
+    
+    pflags = find_pos_after(line, ", flags=")
+    pflagse = line.find(")")
+    flags = line[pflags:pflagse]
+
+#    print("Chunk\n  addr = {:x}\n  size = {:x}\n  flags = {}".format(chunk_addr
+#                                                                         ,size
+#                                                                         , flags))
+    return (chunk_addr, size, flags)
+
+
 def parse_fastbins():
     global line
     global f
-    
-    
+    line = f.readline()
+    while( line.find("Unsorted Bin for arena") == -1):
+        pidx = line.find("idx=")+4
+        pidxe = line.find(", size=")
+        idx = int(line[pidx:pidxe],0)
+
+        psize = pidxe+7
+        psizee = line.find("]")
+        size = int(line[psize:psizee],0)
+
+        line = line[psizee+1:]
+        while(line.find("Chunk(addr=") != -1):
+            chunk = parse_chunk(line)
+            print chunk
+            chunke = line.find(")")+1
+            line = line[chunke:]
+
+        line = f.readline()
+    f.seek(-len(line),1)
+
+def parse_chunks():
+    global line
+    global f
+    line = f.readline()
+    while(line.find("==Chunks Done==") == -1):
+        if (contains(line, "Chunk")):
+            c = parse_chunk(line)
+            print c
+        line = f.readline()
+        
+        
+def parse_smallbins():
+    global f
+    global line
+    line=f.readline()
+    while line.find('Large Bins for arena') == -1:
+        if contains(line, 'small_bins['):
+            pidx = find_pos_after(line,'small_bins[')
+            pidxe = line.find(']:')
+            binidx = int(line[pidx:pidxe],0)
+            line = f.readline()
+            print('small bin[{}]'.format(binidx))
+            while(contains(line, 'Chunk')):
+                pchunk = line.find('Chunk(')
+                pchunke = line.find(')')+1
+                c = parse_chunk(line[pchunk:pchunke])
+                print c
+                line = line[pchunke:]
+        line = f.readline()
+    f.seek(-len(line),1)
+
+def parse_unsortedbins():
+    global f
+    global line
+    while line.find('Small Bins for arena') == -1:
+        if contains(line, 'unsorted_bins['):
+            pidx = find_pos_after(line, 'unsorted_bins[')
+            pidxe = line.find(']:')
+            binidx = int(line[pidx:pidxe],0)
+            print('unsorted bin[{}]'.format(binidx))
+            line = f.readline()
+            while(contains(line, 'Chunk')):
+                pchunk = line.find('Chunk(')
+                pchunke = line.find(')')+1
+                c = parse_chunk(line[pchunk:pchunke])
+                print c
+                line = line[pchunke:]
+        line = f.readline()
+    f.seek(-len(line),1)
+
+
+def parse_largebins():
+    return 0
+
+
+
 def parse_line():
     global line
     global f
     while line:
-        if contains(line, "Tcache"):
-            continue
-        elif contains(line, "Fastbins for arena"):
+        if contains(line, "Fastbins for arena"):
+            print 'fastbins'
+            print
             parse_fastbins()
-        
-        
+        elif contains(line, "Small Bins for arena"):
+            print 'smallbins'
+            print
+            parse_smallbins()
+        elif contains(line, "Unsorted Bin for arena"):
+            print 'unsorted'
+            print
+            parse_unsortedbins()
+        elif contains(line, "Large Bins for arena"):
+            print 'largebins'
+            print
+            parse_largebins()
+        elif contains(line, "==Chunks=="):
+            print 'chunks'
+            print
+            parse_chunks()
         line = f.readline()
     
 
 if __name__ == '__main__':
 
     #skip first lines
-    
+    skip_lines()
+    line = f.readline()
     while line:
-        print( line)
         line = f.readline()
+        parse_line()
+        
