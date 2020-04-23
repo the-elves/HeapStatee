@@ -133,23 +133,18 @@ def parse_line():
     while line:
         if contains(line, "Fastbins for arena"):
             print( 'fastbins')
-            print()
             parse_fastbins()
         elif contains(line, "Small Bins for arena"):
             print( 'smallbins')
-            print()
             parse_smallbins()
         elif contains(line, "Unsorted Bin for arena"):
             print( 'unsorted')
-            print()
             parse_unsortedbins()
         elif contains(line, "Large Bins for arena"):
             print( 'largebins')
-            print()
             parse_largebins()
         elif contains(line, "==Chunks=="):
             print( 'chunks')
-            print()
             parse_chunks()
         line = f.readline()
     
