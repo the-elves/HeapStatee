@@ -5,7 +5,7 @@ from mstate import Chunk
 
 f = open(sys.argv[1])
 line = f.readline()
-
+first_address = 0
 def skip_lines():
     global f
     global line
@@ -30,7 +30,10 @@ def parse_chunk(line):
     pchunks = find_pos_after(line, "Chunk(addr=")
     pchunkse = line.find(", size=")
     chunk_addr = int(line[pchunks:pchunkse], 0)
-    
+    global first_address
+    if(first_address == 0):
+        first_address = chunk_addr
+    chunk_addr-=first_address
     pchunksize = find_pos_after(line, ", size=")
     pchunksizee = line.find(", flags=")
     size = int(line[pchunksize:pchunksizee],0)
@@ -61,12 +64,12 @@ def parse_fastbins():
         line = line[psizee+1:]
         while(line.find("Chunk(addr=") != -1):
             chunk = parse_chunk(line)
-            print chunk
+            print (chunk)
             chunke = line.find(")")+1
             line = line[chunke:]
 
         line = f.readline()
-    f.seek(-len(line),1)
+    f.seek(f.tell()-len(line),0)
 
 def parse_chunks():
     global line
@@ -75,7 +78,7 @@ def parse_chunks():
     while(line.find("==Chunks Done==") == -1):
         if (contains(line, "Chunk")):
             c = parse_chunk(line)
-            print c
+            print (c)
         line = f.readline()
         
         
@@ -94,10 +97,10 @@ def parse_smallbins():
                 pchunk = line.find('Chunk(')
                 pchunke = line.find(')')+1
                 c = parse_chunk(line[pchunk:pchunke])
-                print c
+                print (c)
                 line = line[pchunke:]
         line = f.readline()
-    f.seek(-len(line),1)
+    f.seek(f.tell()-len(line),0)
 
 def parse_unsortedbins():
     global f
@@ -113,7 +116,7 @@ def parse_unsortedbins():
                 pchunk = line.find('Chunk(')
                 pchunke = line.find(')')+1
                 c = parse_chunk(line[pchunk:pchunke])
-                print c
+                print (c)
                 line = line[pchunke:]
         line = f.readline()
     f.seek(-len(line),1)
@@ -129,24 +132,24 @@ def parse_line():
     global f
     while line:
         if contains(line, "Fastbins for arena"):
-            print 'fastbins'
-            print
+            print( 'fastbins')
+            print()
             parse_fastbins()
         elif contains(line, "Small Bins for arena"):
-            print 'smallbins'
-            print
+            print( 'smallbins')
+            print()
             parse_smallbins()
         elif contains(line, "Unsorted Bin for arena"):
-            print 'unsorted'
-            print
+            print( 'unsorted')
+            print()
             parse_unsortedbins()
         elif contains(line, "Large Bins for arena"):
-            print 'largebins'
-            print
+            print( 'largebins')
+            print()
             parse_largebins()
         elif contains(line, "==Chunks=="):
-            print 'chunks'
-            print
+            print( 'chunks')
+            print()
             parse_chunks()
         line = f.readline()
     
