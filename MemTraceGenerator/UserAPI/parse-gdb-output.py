@@ -33,7 +33,7 @@ def parse_chunk(line):
     global first_address
     if(first_address == 0):
         first_address = chunk_addr
-    chunk_addr-=first_address
+    chunk_addr = chunk_addr - first_address -560 -4112*2
     pchunksize = find_pos_after(line, ", size=")
     pchunksizee = line.find(", flags=")
     size = int(line[pchunksize:pchunksizee],0)
@@ -47,6 +47,16 @@ def parse_chunk(line):
 #                                                                         , flags))
     return (chunk_addr, size, flags)
 
+def parse_chunks():
+    global line
+    global f
+    line = f.readline()
+    while(line.find("==Chunks Done==") == -1):
+        if (contains(line, "Chunk")):
+            c = parse_chunk(line)
+            if c[1] != 4112 and c[1] != 560:
+                print (c)
+        line = f.readline()
 
 def parse_fastbins():
     global line
@@ -67,21 +77,11 @@ def parse_fastbins():
             print (chunk)
             chunke = line.find(")")+1
             line = line[chunke:]
-
+        pos = f.tell()
         line = f.readline()
-    f.seek(f.tell()-len(line),0)
+    f.seek(pos)
 
-def parse_chunks():
-    global line
-    global f
-    line = f.readline()
-    while(line.find("==Chunks Done==") == -1):
-        if (contains(line, "Chunk")):
-            c = parse_chunk(line)
-            print (c)
-        line = f.readline()
-        
-        
+
 def parse_smallbins():
     global f
     global line
@@ -92,15 +92,16 @@ def parse_smallbins():
             pidxe = line.find(']:')
             binidx = int(line[pidx:pidxe],0)
             line = f.readline()
-            print('small bin[{}]'.format(binidx))
+            # print('small bin[{}]'.format(binidx))
             while(contains(line, 'Chunk')):
                 pchunk = line.find('Chunk(')
                 pchunke = line.find(')')+1
                 c = parse_chunk(line[pchunk:pchunke])
                 print (c)
                 line = line[pchunke:]
+        pos = f.tell()
         line = f.readline()
-    f.seek(f.tell()-len(line),0)
+    f.seek(pos)
 
 def parse_unsortedbins():
     global f
@@ -110,7 +111,7 @@ def parse_unsortedbins():
             pidx = find_pos_after(line, 'unsorted_bins[')
             pidxe = line.find(']:')
             binidx = int(line[pidx:pidxe],0)
-            print('unsorted bin[{}]'.format(binidx))
+            # print('unsorted bin[{}]'.format(binidx))
             line = f.readline()
             while(contains(line, 'Chunk')):
                 pchunk = line.find('Chunk(')
@@ -118,8 +119,9 @@ def parse_unsortedbins():
                 c = parse_chunk(line[pchunk:pchunke])
                 print (c)
                 line = line[pchunke:]
+        pos = f.tell()
         line = f.readline()
-    f.seek(-len(line),1)
+    f.seek(pos)
 
 
 def parse_largebins():
@@ -131,6 +133,7 @@ def parse_line():
     global line
     global f
     while line:
+        line = f.readline()
         if contains(line, "Fastbins for arena"):
             print( 'fastbins')
             parse_fastbins()
@@ -146,8 +149,9 @@ def parse_line():
         elif contains(line, "==Chunks=="):
             print( 'chunks')
             parse_chunks()
-        line = f.readline()
-    
+        elif contains(line, 'command'):
+            print(line)
+
 
 if __name__ == '__main__':
 
