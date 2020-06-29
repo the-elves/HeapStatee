@@ -14,5 +14,13 @@ int main(int argc, char *argv[])
   struct user *admin_user = (struct user *) malloc(sizeof(struct user));
   p->authenticated=1;
   struct user *normal_user = p;
+  if(argc>10)
+  {
+    printf("asdf");
+  }
+  else
+  {
+    printf("jingla");
+  }
     
 }

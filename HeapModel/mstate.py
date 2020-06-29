@@ -1,5 +1,5 @@
 import sys
-from Colors import bcolors
+from HeapModel.Colors import bcolors
 SIZE_SZ = 8
 align_of_long_double = 8 if SIZE_SZ == 4 else 16
 MALLOC_ALLIGNMENT = align_of_long_double if 2 * SIZE_SZ < align_of_long_double else 2 * SIZE_SZ
