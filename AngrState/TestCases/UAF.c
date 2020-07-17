@@ -6,6 +6,7 @@ struct user
   char *name;
   int authenticated;
 };
+
 int main(int argc, char *argv[])
 {
   struct user *p = (struct user*)malloc(sizeof(struct user));
@@ -22,5 +23,5 @@ int main(int argc, char *argv[])
   {
     printf("jingla");
   }
-    
 }
+

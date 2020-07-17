@@ -5,7 +5,7 @@ from HeapModel.mstate import HeapState
 
 class HeapPlugin(SimStatePlugin):
 
-    #TODO merge and widen
+    # TODO merge and widen
     # def merge(self, _others, _merge_conditions, _common_ancestor=None):
     #     pass
 
@@ -27,20 +27,23 @@ class HeapPlugin(SimStatePlugin):
         heap_copy = deepcopy(self.heap_state)
         return HeapPlugin(heap_copy)
 
+
 class Malloc(SimProcedure):
     i = 0
+
     def run(self, size):
         s = self.state.solver.eval(size)
         addr = self.state.my_heap.heap_state.malloc(s)
         print(f'malloc called {self.i} with size {s}, allocated at {addr}')
         self.i += 1
 
+
 class Free(SimProcedure):
     i = 0
+
     def run(self, address):
         add = self.state.solver.eval(address)
         hs = self.state.my_heap.heap_state
         hs.free(add)
         print(f'free called {self.i}, address {add}')
-
         self.i += 1
