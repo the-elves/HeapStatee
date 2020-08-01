@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
+import psutil
 import sys
 sys.path.append('../')
 from HeapPlugin.HeapPlugin import HeapPlugin, Malloc, Free
@@ -56,9 +57,11 @@ initialize_project(b, estate)
 m = b.factory.simulation_manager(estate)
 while len(m.active) > 0:
     # print(m.active)
-    m.active[0].block().pp()
-    m.step()
+    # m.active[0].block().pp()
+    if(psutil.virtual_memory().percent < 90):
+        m.step()
+
     # print('--')
     # print(len(m.active))
     # input()
-    #8605882639
+# 8605882639

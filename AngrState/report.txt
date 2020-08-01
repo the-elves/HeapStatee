@@ -1,0 +1,10 @@
+freed chunk not found in allocated chunks: possible double free ... continuing exection @ -16
+freed chunk not found in allocated chunks: possible double free ... continuing exection @ -16
+writting to 500028 for 10 bytes
+write @ 500030 is in free chunk 500030
+Metadata of heap chunk @ 0x500030 cloberred
+write @ 500031 is in free chunk 500030
+Metadata of heap chunk @ 0x500030 cloberred
+writting to 500018 for 8 bytes
+writting to 500020 for 8 bytes
+writting to 500010 for 8 bytes
