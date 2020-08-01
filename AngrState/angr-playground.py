@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
+import sys
+sys.path.append('../')
 from HeapPlugin.HeapPlugin import HeapPlugin, Malloc, Free
 from HeapModel.heapquery import *
 import angr
