@@ -29,9 +29,12 @@ def handle_heap_write(state):
             l.warning('Writing outside chunks @ 0x{:x}'.format(write_address))
         else:
             if c.free:
-                l.warning('write @ {:x} is in free chunk {:x}'.format(wa, c.address))
+                conc_inp = state.solver.eval(argcinp)
+                l.warning('write @ {:x} is in free chunk {:x} argc = {}'.format(wa, c.address, conc_inp))
+
             if metadata_cloberring(wa, state.my_heap.heap_state):
-                l.warning('Metadata of heap chunk @ 0x{:x} cloberred'.format(c.address))
+                conc_inp = state.solver.eval(argcinp)
+                l.warning('Metadata of heap chunk @ 0x{:x} cloberred argc = {}'.format(c.address, conc_inp))
 
 def bp_action_write(state):
     write_address = state.solver.eval(state.inspect.mem_write_address)
@@ -60,7 +63,8 @@ while len(m.active) > 0:
     # m.active[0].block().pp()
     if(psutil.virtual_memory().percent < 90):
         m.step()
-
+    else:
+        break
     # print('--')
     # print(len(m.active))
     # input()
