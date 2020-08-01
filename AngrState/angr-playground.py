@@ -64,6 +64,7 @@ while len(m.active) > 0:
     if(psutil.virtual_memory().percent < 90):
         m.step()
     else:
+        print('System memory too low, exiting')
         break
     # print('--')
     # print(len(m.active))
