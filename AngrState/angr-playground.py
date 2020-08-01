@@ -59,7 +59,7 @@ estate = b.factory.entry_state(argc = 2, argv = [binary_name, input_chars])
 initialize_project(b, estate)
 m = b.factory.simulation_manager(estate)
 while len(m.active) > 0:
-    print(len(m.active), m.active)
+    print('active states = ',len(m.active))
     # m.active[0].block().pp()
     if(psutil.virtual_memory().percent < 90):
         m.step()
