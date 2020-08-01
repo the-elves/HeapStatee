@@ -1,11 +1,11 @@
-from user_functions import *
-from mstate import *
+from Tests.user_functions import *
+from HeapModel.mstate import *
 import random
 DEBUG = 0
 TRACE = True
 
 users = []
-h = HeapState(0x00)
+h = HeapState(500000)
 seed = random.randrange(sys.maxsize)
 # print ("Seed is ", seed)
 random.seed(1)
@@ -13,7 +13,7 @@ allocation_number = 0
 if TRACE:
     f = open("../MemTraceGenerator/UserAPI/trace", "w")
 
-for x in range(1000):
+for x in range(500):
     if DEBUG >0:
         print ("Iteration ",x)
     if random.randint(1, 2) % 2 == 0:

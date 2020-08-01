@@ -1,4 +1,5 @@
 import sys
+from HeapModel.Vulns import *
 from HeapModel.Colors import bcolors
 SIZE_SZ = 8
 align_of_long_double = 8 if SIZE_SZ == 4 else 16
@@ -164,13 +165,13 @@ class HeapState:
                 new_prev_size = chunk.prev_size
                 prev = self.get_chunk_at_offset(chunk.address, -chunk.prev_size)
                 # add_to_unsorted = False
-                if(chunk.address != 0 and prev == None):
-                    print ("prev not found error")
-                    sys.exit("prev is none")
-                if(chunk.address != 0):
+                if(chunk.address != self.startAddress and prev == None):
+                    raise Vulnerability("prev not found error", chunk.address)
+
+                if(chunk.address != self.startAddress):
                     # TODO hackily considering the chunks in fastbins to be free
                     # TODO actually set av->have_fastchunks should be set to false
-                    if (prev.free ): #or prev.bin in self.fastbin
+                    if (prev.free): #or prev.bin in self.fastbin
                         # TODO need unlink macro here
                         # add_to_unsorted = True
                         prev_bin = prev.bin
@@ -448,8 +449,9 @@ class HeapState:
                 break
 
         if p_chunk is None:
-            print ("freed chunk not found in allocated chunks")
-            sys.exit(0)
+            raise DoubleFreeVuln("freed chunk not found in allocated chunks: "
+                                 "possible double free ... continuing exection", p)
+            # sys.exit(0)
         self.allocated_chunks.remove(p_chunk)
         size = p_chunk.size
         address = p_chunk.address
@@ -471,7 +473,7 @@ class HeapState:
             #TODO add checks : free(): invalid next size (normal)
             prev_chunk = None
             new_prev_size = p_chunk.prev_size
-            if p_chunk.address != 0:
+            if p_chunk.address != self.startAddress:
                 prev_chunk = self.get_chunk_at_offset(p_chunk.address, -p_chunk.prev_size)
                 #XXX probable error : previous inuse checked hackily
                 # instead of checking current chunks prev_inuse and we are checking if the chunk is present in free lists
@@ -528,7 +530,7 @@ class HeapState:
         else:
             line = '(' + str(hex(0x555555758660 + chunk.address)) + ', ' + str(hex(chunk.size)) + ', \''
             prev_chunk = self.get_chunk_at_offset(chunk.address, -chunk.prev_size)
-        if chunk.address == 0 or not prev_chunk.free:
+        if chunk.address == self.startAddress or not prev_chunk.free:
             line = line + 'PREV_INUSE\')'
         else:
             line = line + '\')'
@@ -552,7 +554,7 @@ class HeapState:
             self.print_bin(b, PDEBUG)
         print('largebins')
         print('chunks')
-        fst = self.get_chunk_by_address(0)
+        fst = self.get_chunk_by_address(self.startAddress)
         while(fst):
             self.dump_chunk(fst, PDEBUG)
             fst = self.get_chunk_at_offset(fst.address, fst.size)

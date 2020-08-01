@@ -1,8 +1,8 @@
 import sys
 import os
 sys.path.append("/home/" + os.environ["USERNAME"] + "/College/Guided_HML/HeapStatee")
-from mstate import Chunk
-
+# from mstate import Chunk
+startingAddress = 500000
 f = open(sys.argv[1])
 line = f.readline()
 first_address = 0
@@ -33,7 +33,7 @@ def parse_chunk(line):
     global first_address
     if(first_address == 0):
         first_address = chunk_addr
-    chunk_addr = chunk_addr - first_address -560 -4112*2
+    chunk_addr = chunk_addr - first_address -560 -4112*2 + startingAddress
     pchunksize = find_pos_after(line, ", size=")
     pchunksizee = line.find(", flags=")
     size = int(line[pchunksize:pchunksizee],0)

@@ -10,9 +10,14 @@ struct user
 int main(int argc, char *argv[])
 {
   struct user *p = (struct user*)malloc(sizeof(struct user));
-  p-> authenticated = 0;
-  free(p);
+  p->authenticated = 0;
+  printf("(from program)First malloc: %p\n", p);
+  printf("(from program)Second malloc: %p\n", p);
   struct user *admin_user = (struct user *) malloc(sizeof(struct user));
+  printf("(from program)freeing %p\n", p);
+  free(p);
+  printf("(from program)freeing %p\n", p);
+  free(admin_user);
   p->authenticated=1;
   struct user *normal_user = p;
   if(argc>10)
