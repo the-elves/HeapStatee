@@ -43,6 +43,7 @@ def handle_heap_write(state):
                 conc_stdin = state.posix.dumps(1)
                 state.block().pp();
                 l.warning('Metadata of heap chunk @ 0x{:x} cloberred argc = {} stdin={}'.format(c.address, conc_argc, conc_stdin))
+    input()
                 
 
 def bp_action_write(state):
@@ -74,5 +75,4 @@ while len(m.active) > 0:
         break
     # print('--')
     # print(len(m.active))
-    input()
 # 8605882639

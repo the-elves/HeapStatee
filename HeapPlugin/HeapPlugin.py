@@ -40,9 +40,10 @@ class Malloc(SimProcedure):
             addr = self.state.my_heap.heap_state.malloc(s)
         except Vulnerability as V:
             print(V.msg, V.addr)
-            l.debug(V.msg + " @ " + str(V.addr))
+            l.warning(V.msg + " @ " + str(V.addr))
         print(f'malloc called {Malloc.i} with size {s}, allocated at 0x{addr:x}')
         Malloc.i += 1
+        input()
         return addr + 2*SIZE_SZ
 
 
@@ -59,4 +60,6 @@ class Free(SimProcedure):
         except Vulnerability as V:
             print("Error")
             l.warning(V.msg + " @ " + str(V.addr))
+            input()
         Free.i += 1
+
