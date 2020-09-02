@@ -12,7 +12,7 @@ import time
 import signal
 
 HOUR = 60*60
-
+time_limit = HOUR/4
 l = logging.getLogger('heap_analysis')
 h = HeapPlugin(startingAddress=0x2000000)
 
@@ -89,7 +89,7 @@ def alarm_handler(signum, frame):
     
 
 signal.signal(signal.SIGALRM, alarm_handler)
-signal.alarm(int(0.5 * HOUR))
+signal.alarm(int(time_limit))
         
 
 def stopping_condition():

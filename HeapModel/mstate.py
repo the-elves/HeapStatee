@@ -131,7 +131,8 @@ class HeapState:
             r = 124 + (sz >> 18)
         else:
             r = 126
-        return r-N_SMALL_BINS
+        print("lb idx", r-N_SMALL_BINS, "sz", sz)
+        return r-N_SMALL_BINS-2
 
     def allocate_from_smallbin(self, sz):
         idx = self.smallbin_index(sz)
