@@ -4,8 +4,9 @@ from HeapModel.mstate import HeapState, SIZE_SZ
 from HeapModel.Vulns import *
 import logging
 l = logging.getLogger('heap_analysis')
-l.addHandler(logging.FileHandler('report.txt', 'w'))
-l.setLevel(logging.DEBUG)
+vl = logging.getLogger('vuln_logger');
+
+
 
 
 class HeapPlugin(SimStatePlugin):
@@ -41,16 +42,19 @@ class Malloc(SimProcedure):
         except Vulnerability as V:
             print(V.msg, V.addr)
             l.warning(V.msg + " @ " + str(V.addr))
+            vl.warning(V.msg + " @ " + str(V.addr))
         print(f'malloc called {Malloc.i} with size {s}, allocated at 0x{addr:x}')
         Malloc.i += 1
-        input()
-        return addr + 2*SIZE_SZ
+        return addr + SIZE_SZ
 
 
 class Free(SimProcedure):
     i = 0
     def run(self, address):
         add = self.state.solver.eval(address)
+        if(add == 0):
+            l.warning('free 0 called, skipping')
+            vl.warning('free 0 called, skipping')
         add = add - 2 * SIZE_SZ
         print(address)
         print(f'free called {Free.i}, address {add}')
@@ -60,6 +64,7 @@ class Free(SimProcedure):
         except Vulnerability as V:
             print("Error")
             l.warning(V.msg + " @ " + str(V.addr))
-            input()
+            vl.warning(V.msg + " @ " + str(V.addr))
+
         Free.i += 1
 

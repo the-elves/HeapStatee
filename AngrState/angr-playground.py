@@ -66,7 +66,7 @@ def handle_heap_write(state):
                 vuln = True    
             if metadata_cloberring(wa, state.my_heap.heap_state):
                 conc_argv = state.solver.eval(argvinp)
-                conc_stdvn = state.posix.dumps(1)
+                conc_stdin = state.posix.dumps(1)
                 state.block().pp();
                 rip = state.solver.eval(state.regs.rip)
                 l.warning('Metadata of heap chunk @ 0x{:x} cloberred argv = {} stdin={} write_address = 0x{:x}'.format(c.address, conc_argv, conc_stdin, write_address+wi))

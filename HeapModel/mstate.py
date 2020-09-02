@@ -15,7 +15,7 @@ MALLOC_ALIGN_MASK = MALLOC_ALLIGNMENT - 1
 MIN_SIZE = (4*SIZE_SZ + MALLOC_ALIGN_MASK) & ~ MALLOC_ALIGN_MASK
 PREV_INUSE = 1
 MAX_ITERATIONS = 10000
-MAX_FASTBIN_SIZE = 64 * SIZE_SZ / 4
+MAX_FASTBIN_SIZE = 80 * SIZE_SZ // 4
 FASTBIN_CONSOLIDATION_THRESHOLD = 65536
 DEBUG = True
 MAX_SMALLBIN_SIZE = ((N_SMALL_BINS - SMALLBIN_CORRECTION) * SMALLBIN_WIDTH)
@@ -119,8 +119,8 @@ class HeapState:
         return r-1
 
     def largebin_index(self, sz):
-        if ((sz >> 6) <= 38):
-            r = 56 + (sz >> 6)
+        if ((sz >> 6) <= 48):
+            r = 48 + (sz >> 6)
         elif (( sz >> 9) <= 20):
             r = 91 + (sz >> 9)
         elif((sz >> 12) <= 10):
