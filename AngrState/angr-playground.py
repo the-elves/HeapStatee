@@ -8,7 +8,7 @@ from HeapModel.heapquery import *
 import angr
 import claripy
 import logging
-import time
+from datetime import datetime
 import signal
 
 HOUR = 60*60
@@ -16,8 +16,6 @@ time_limit = HOUR/4
 l = logging.getLogger('heap_analysis')
 h = HeapPlugin(startingAddress=0x2000000)
 
-
-start_time = time.monotonic()
 
 def initialize_logger(bname):
     global vl
@@ -115,11 +113,13 @@ estate = b.factory.entry_state()#argc = 2, argv = [binary_name, input_chars])
 initialize_project(b, estate)
 m = b.factory.simulation_manager(estate)
 while len(m.active) > 0:
-    print('active states = ',len(m.active))
-    try:
-        m.active[0].block().pp()
-    except:
-        print("Disassembly not available")
+    now = datetime.now()
+    timestr = now.strftime("%H:%M:%S")
+    print(timestr, 'active states = ',len(m.active))
+    # try:
+    #     m.active[0].block().pp()
+    # except:
+    #     print("Disassembly not available")
     if(not stopping_condition()):
         m.step()
     else:
