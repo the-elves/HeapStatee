@@ -19,7 +19,7 @@ MAX_FASTBIN_SIZE = 80 * SIZE_SZ // 4
 FASTBIN_CONSOLIDATION_THRESHOLD = 65536
 DEBUG = True
 MAX_SMALLBIN_SIZE = ((N_SMALL_BINS - SMALLBIN_CORRECTION) * SMALLBIN_WIDTH)
-NFASTBINS = 9
+NFASTBINS = 10
 class Chunk:
     id = 0
     def __init__(self):
@@ -60,7 +60,7 @@ class HeapState:
             self.fastbin.append([])
         for i in range(64):
             self.smallbin.append([])
-        for i in range(N_BINS-N_SMALL_BINS-NFASTBINS):
+        for i in range(N_BINS-N_SMALL_BINS):
             self.largebin.append([])
         self.top = Chunk()
         self.top.size = STARTING_SIZE-8784
@@ -132,7 +132,7 @@ class HeapState:
         else:
             r = 126
         print("lb idx", r-N_SMALL_BINS, "sz", sz)
-        return r-N_SMALL_BINS-2
+        return r-N_SMALL_BINS
 
     def allocate_from_smallbin(self, sz):
         idx = self.smallbin_index(sz)
