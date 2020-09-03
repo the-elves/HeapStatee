@@ -37,15 +37,17 @@ class Malloc(SimProcedure):
     i = 0
     def run(self, size):
         s = self.state.solver.eval(size)
+        hs = self.state.my_heap.heap_state
         try:
-            addr = self.state.my_heap.heap_state.malloc(s)
+            addr = hs.malloc(s)
         except Vulnerability as V:
             print(V.msg, V.addr)
             l.warning(V.msg + " @ " + str(V.addr))
             vl.warning(V.msg + " @ " + str(V.addr))
-        print(f'malloc called {Malloc.i} with size {s}, allocated at 0x{addr:x}')
+        print(f'malloc called {Malloc.i} with size {hs.request2size(s)}, allocated at 0x{addr:x}')
         Malloc.i += 1
-        return addr + SIZE_SZ
+        hs.dump()
+        return addr + 2*SIZE_SZ
 
 
 class Free(SimProcedure):

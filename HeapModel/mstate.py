@@ -38,7 +38,7 @@ class Chunk:
 
     def dump_chunk(self):
         print ("[" , \
-              "address = ",self.address, \
+              "address = ",str(hex(self.address)), \
               "size = ",self.size, \
               "free = ", self.free, \
               "prev_size = ", self.prev_size, \
@@ -309,8 +309,8 @@ class HeapState:
             if(iteration > MAX_ITERATIONS):
                 break
 
-            idx = self.largebin_index(nb)
             if nb > MAX_SMALLBIN_SIZE:
+                idx = self.largebin_index(nb)
                 bin = self.largebin[idx]
                 if(len(bin) != 0):
                     victim = bin[0]
