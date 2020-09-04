@@ -1,0 +1,244 @@
+free 0 called, skipping
+free 0 called, skipping
+rip = 40ee3d write @ 20001c0 is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001c0
+Backtrace:
+Frame 0: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 1: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 2: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 3: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 4: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40ee3d write @ 20001c1 is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001c1
+Backtrace:
+Frame 0: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 1: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 2: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 3: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 4: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40ee3d write @ 20001c2 is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001c2
+Backtrace:
+Frame 0: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 1: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 2: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 3: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 4: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40ee3d write @ 20001c3 is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001c3
+Backtrace:
+Frame 0: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 1: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 2: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 3: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 4: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40ee3d write @ 20001c4 is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001c4
+Backtrace:
+Frame 0: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 1: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 2: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 3: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 4: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40ee3d write @ 20001c5 is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001c5
+Backtrace:
+Frame 0: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 1: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 2: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 3: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 4: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40ee3d write @ 20001c6 is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001c6
+Backtrace:
+Frame 0: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 1: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 2: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 3: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 4: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40ee3d write @ 20001c7 is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001c7
+Backtrace:
+Frame 0: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 1: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 2: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 3: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 4: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40ee4b write @ 20001c8 is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001c8
+Backtrace:
+Frame 0: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 1: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 2: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 3: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 4: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40ee4b write @ 20001c9 is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001c9
+Backtrace:
+Frame 0: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 1: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 2: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 3: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 4: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40ee4b write @ 20001ca is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001ca
+Backtrace:
+Frame 0: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 1: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 2: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 3: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 4: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40ee4b write @ 20001cb is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001cb
+Backtrace:
+Frame 0: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 1: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 2: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 3: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 4: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40ee4e write @ 20001ac is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001ac
+Backtrace:
+Frame 0: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 1: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 2: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 3: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 4: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40ee4e write @ 20001ad is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001ad
+Backtrace:
+Frame 0: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 1: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 2: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 3: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 4: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40ee4e write @ 20001ae is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001ae
+Backtrace:
+Frame 0: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 1: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 2: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 3: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 4: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40ee4e write @ 20001af is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001af
+Backtrace:
+Frame 0: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 1: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 2: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 3: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 4: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40df07 write @ 20001b0 is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001b0
+Backtrace:
+Frame 0: 0x40ee80 => 0x40def0, sp = 0x7fffffffffefcb8
+Frame 1: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 2: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 3: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 4: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 5: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40df07 write @ 20001b1 is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001b1
+Backtrace:
+Frame 0: 0x40ee80 => 0x40def0, sp = 0x7fffffffffefcb8
+Frame 1: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 2: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 3: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 4: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 5: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40df07 write @ 20001b2 is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001b2
+Backtrace:
+Frame 0: 0x40ee80 => 0x40def0, sp = 0x7fffffffffefcb8
+Frame 1: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 2: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 3: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 4: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 5: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40df07 write @ 20001b3 is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001b3
+Backtrace:
+Frame 0: 0x40ee80 => 0x40def0, sp = 0x7fffffffffefcb8
+Frame 1: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 2: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 3: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 4: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 5: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40df07 write @ 20001b4 is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001b4
+Backtrace:
+Frame 0: 0x40ee80 => 0x40def0, sp = 0x7fffffffffefcb8
+Frame 1: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 2: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 3: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 4: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 5: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40df07 write @ 20001b5 is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001b5
+Backtrace:
+Frame 0: 0x40ee80 => 0x40def0, sp = 0x7fffffffffefcb8
+Frame 1: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 2: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 3: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 4: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 5: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40df07 write @ 20001b6 is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001b6
+Backtrace:
+Frame 0: 0x40ee80 => 0x40def0, sp = 0x7fffffffffefcb8
+Frame 1: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 2: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 3: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 4: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 5: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40df07 write @ 20001b7 is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001b7
+Backtrace:
+Frame 0: 0x40ee80 => 0x40def0, sp = 0x7fffffffffefcb8
+Frame 1: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 2: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 3: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 4: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 5: 0x0 => 0x0, sp = 0xffffffffffffffff
+free 0 called, skipping
+rip = 40df2d write @ 20001a0 is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001a0
+Backtrace:
+Frame 0: 0x40ee80 => 0x40def0, sp = 0x7fffffffffefcb8
+Frame 1: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 2: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 3: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 4: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 5: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40df2d write @ 20001a1 is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001a1
+Backtrace:
+Frame 0: 0x40ee80 => 0x40def0, sp = 0x7fffffffffefcb8
+Frame 1: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 2: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 3: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 4: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 5: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40df2d write @ 20001a2 is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001a2
+Backtrace:
+Frame 0: 0x40ee80 => 0x40def0, sp = 0x7fffffffffefcb8
+Frame 1: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 2: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 3: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 4: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 5: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40df2d write @ 20001a3 is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001a3
+Backtrace:
+Frame 0: 0x40ee80 => 0x40def0, sp = 0x7fffffffffefcb8
+Frame 1: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 2: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 3: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 4: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 5: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40df2d write @ 20001a4 is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001a4
+Backtrace:
+Frame 0: 0x40ee80 => 0x40def0, sp = 0x7fffffffffefcb8
+Frame 1: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 2: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 3: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 4: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 5: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40df2d write @ 20001a5 is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001a5
+Backtrace:
+Frame 0: 0x40ee80 => 0x40def0, sp = 0x7fffffffffefcb8
+Frame 1: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 2: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 3: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 4: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 5: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40df2d write @ 20001a6 is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001a6
+Backtrace:
+Frame 0: 0x40ee80 => 0x40def0, sp = 0x7fffffffffefcb8
+Frame 1: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 2: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 3: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 4: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 5: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 40df2d write @ 20001a7 is in free chunk 2000190 argv = 10 stdin=b'' write_address = 20001a7
+Backtrace:
+Frame 0: 0x40ee80 => 0x40def0, sp = 0x7fffffffffefcb8
+Frame 1: 0x40cad0 => 0x40ede0, sp = 0x7fffffffffefd18
+Frame 2: 0x403068 => 0x40cad0, sp = 0x7fffffffffefd28
+Frame 3: 0x721a43 => 0x402a50, sp = 0x7fffffffffefe98
+Frame 4: 0x403f50 => 0x7219a0, sp = 0x7fffffffffeff58
+Frame 5: 0x0 => 0x0, sp = 0xffffffffffffffff
+free 0 called, skipping

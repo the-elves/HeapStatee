@@ -99,9 +99,9 @@ def stopping_condition():
 #binary_name = '/bin/ls'
 binary_name = sys.argv[1]
 b = angr.Project(binary_name, auto_load_libs=True,
-                 use_sim_procedures=False)
-#                 force_load_libs=['../../tools/glibc-dir/install/lib64/libc-2.27.so',
-#                                  '/home/ajinkya/Guided_HLM/tools/glibc-dir/install/lib64/ld-2.27.so'])
+                 use_sim_procedures=False,
+                 force_load_libs=['../../tools/glibc-dir/install/lib64/libc-2.27.so',
+                                  '/home/ajinkya/Guided_HLM/tools/glibc-dir/install/lib64/ld-2.27.so'])
 print(b.loader.shared_objects)
 # exit() 
 # main_addr = b.loader.find_symbol('main').rebased_addr

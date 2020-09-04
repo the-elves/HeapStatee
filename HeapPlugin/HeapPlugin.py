@@ -57,6 +57,7 @@ class Free(SimProcedure):
         if(add == 0):
             l.warning('free 0 called, skipping')
             vl.warning('free 0 called, skipping')
+            return
         add = add - 2 * SIZE_SZ
         print(address)
         print(f'free called {Free.i}, address {add}')
