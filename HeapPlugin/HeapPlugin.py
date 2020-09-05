@@ -47,6 +47,24 @@ class Malloc(SimProcedure):
         print(f'malloc called {Malloc.i} with size {hs.request2size(s)}, allocated at 0x{addr:x}')
         Malloc.i += 1
         hs.dump()
+        print(self.state.callstack)
+        return addr + 2*SIZE_SZ
+
+class Calloc(SimProcedure):
+    i = 0
+    def run(self, size, num):
+        s = self.state.solver.eval(size)
+        n = self.state.solver.eval(num)
+        hs = self.state.my_heap.heap_state
+        try:
+            addr = hs.malloc(n*s)
+        except Vulnerability as V:
+            print(V.msg, V.addr)
+            l.warning(V.msg + " @ " + str(V.addr))
+            vl.warning(V.msg + " @ " + str(V.addr))
+        print(f'malloc called {Malloc.i} with size {hs.request2size(s)}, allocated at 0x{addr:x}')
+        Malloc.i += 1
+        hs.dump()
         return addr + 2*SIZE_SZ
 
 

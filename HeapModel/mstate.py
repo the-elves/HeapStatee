@@ -382,7 +382,7 @@ class HeapState:
                 idx = self.largebin_index(nb)
                 if all([len(a) == 0 for a in self.largebin]):
                     break
-                while idx < len(self.largebin):
+                while 0<= idx < len(self.largebin):
                     idx += 1
                     if(len(self.largebin[idx]) == 0):
                         continue

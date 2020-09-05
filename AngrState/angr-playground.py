@@ -3,7 +3,7 @@
 import psutil
 import sys
 sys.path.append('../')
-from HeapPlugin.HeapPlugin import HeapPlugin, Malloc, Free
+from HeapPlugin.HeapPlugin import HeapPlugin, Malloc, Free, Calloc
 from HeapModel.heapquery import *
 import angr
 import claripy
@@ -30,13 +30,13 @@ def initialize_logger(bname):
     
 
 def initialize_project(b, ss):
+    ss.register_plugin('my_heap', h)
     print("[+] hooking malloc")
     b.hook_symbol('malloc', Malloc())
     print("[+] hooking calloc")
-    b.hook_symbol('calloc', Malloc())
+    b.hook_symbol('calloc', Calloc())
     print("[+] hooking free")
     b.hook_symbol('free', Free())    
-    ss.register_plugin('my_heap', h)
     ss.inspect.b('mem_write', when=angr.BP_BEFORE, action=bp_action_write)
     initialize_logger(b.filename)
     
@@ -107,24 +107,40 @@ print(b.loader.shared_objects)
 # main_addr = b.loader.find_symbol('main').rebased_addr
 # print("%x"%(main_addr))
 # cfg = b.analyses.CFGFast()
-input_chars = [claripy.BVS(f'flag{i}',8) for i in range(20)] + [claripy.BVV('\n', 8)]
+num_sym_bytes = 20
+input_chars = [claripy.BVS(f'flag{i}',8) for i in range(num_sym_bytes)] + [claripy.BVV('\n', 8)]
 argvinp = claripy.Concat(*input_chars)
-estate = b.factory.entry_state()#argc = 2, argv = [binary_name, input_chars])
+simfilename = 'mysimfile'
+simfile = angr.SimFile(simfilename, size=102)
+estate = b.factory.entry_state(args = [binary_name, '/exp'])
+simfile.set_state(estate)
+#estate.fs.insert('/f', simfile) 
+estate.fs.mount('/',angr.SimHostFilesystem('/home/ajinkya/Guided_HLM/guest_chroot')) 
+
+#estate = b.factory.entry_state(argc = 2, argv = [binary_name, input_chars])
+for i in range(num_sym_bytes-1):
+    c=argvinp.chop(8)[i]
+    estate.add_constraints(c!=0)
 initialize_project(b, estate)
 m = b.factory.simulation_manager(estate)
 while len(m.active) > 0:
     now = datetime.now()
     timestr = now.strftime("%H:%M:%S")
-    print(timestr, 'active states = ',len(m.active))
+    print(timestr, 'active states = ',len(m.active),end='')
     # try:
     #     m.active[0].block().pp()
     # except:
     #     print("Disassembly not available")
     if(not stopping_condition()):
         m.step()
+        try:
+            print(', posix out', m.active[0].posix.dumps(1), '\r', end='')
+        except:
+            print('no output errro')
     else:
         print('System memory too low, exiting')
         break
+
     # print('--')
     # print(len(m.active))
 # 8605882639
