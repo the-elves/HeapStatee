@@ -38,15 +38,17 @@ class Malloc(SimProcedure):
     def run(self, size):
         s = self.state.solver.eval(size)
         hs = self.state.my_heap.heap_state
+        rip = self.state.solver.eval(self.state.regs.rip)
         try:
             addr = hs.malloc(s)
         except Vulnerability as V:
             print(V.msg, V.addr)
             l.warning(V.msg + " @ " + str(V.addr))
             vl.warning(V.msg + " @ " + str(V.addr))
-        print(f'malloc called {Malloc.i} with size {hs.request2size(s)}, allocated at 0x{addr:x}')
+        print(f'rip {rip:x} malloc called {Malloc.i} with requst_size {s}, allocated size {hs.request2size(s)}, allocated at 0x{addr:x}')
         Malloc.i += 1
         hs.dump()
+        input()
         print(self.state.callstack)
         return addr + 2*SIZE_SZ
 
@@ -56,13 +58,14 @@ class Calloc(SimProcedure):
         s = self.state.solver.eval(size)
         n = self.state.solver.eval(num)
         hs = self.state.my_heap.heap_state
+        rip = self.state.solver.eval(self.state.regs.rip)
         try:
             addr = hs.malloc(n*s)
         except Vulnerability as V:
             print(V.msg, V.addr)
             l.warning(V.msg + " @ " + str(V.addr))
             vl.warning(V.msg + " @ " + str(V.addr))
-        print(f'malloc called {Malloc.i} with size {hs.request2size(s)}, allocated at 0x{addr:x}')
+        print(f'rip {rip:x} calloc called {Malloc.i} with size {hs.request2size(s)}, allocated at 0x{addr:x}')
         Malloc.i += 1
         hs.dump()
         return addr + 2*SIZE_SZ
