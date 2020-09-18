@@ -48,7 +48,6 @@ class Malloc(SimProcedure):
         print(f'rip {rip:x} malloc called {Malloc.i} with requst_size {s}, allocated size {hs.request2size(s)}, allocated at 0x{addr:x}')
         Malloc.i += 1
         hs.dump()
-        input()
         print(self.state.callstack)
         return addr + 2*SIZE_SZ
 

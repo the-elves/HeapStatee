@@ -111,30 +111,30 @@ num_sym_bytes = 20
 input_chars = [claripy.BVS(f'flag{i}',8) for i in range(num_sym_bytes)] + [claripy.BVV('\n', 8)]
 argvinp = claripy.Concat(*input_chars)
 simfilename = 'mysimfile'
-simfile = angr.SimFile(simfilename, size=102)
+simfile = angr.SimFile(simfilename, size=10000)
 estate = b.factory.entry_state(args = [binary_name, '/exp'])
 simfile.set_state(estate)
-#estate.fs.insert('/f', simfile) 
-estate.fs.mount('/',angr.SimHostFilesystem('/home/ajinkya/Guided_HLM/guest_chroot')) 
-
+#estate.fs.insert('/f', simfile)
+estate.fs.mount('/',angr.SimHostFilesystem('/home/ajinkya/Guided_HLM/guest_chroot/')) 
 #estate = b.factory.entry_state(argc = 2, argv = [binary_name, input_chars])
-for i in range(num_sym_bytes-1):
-    c=argvinp.chop(8)[i]
-    estate.add_constraints(c!=0)
+# for i in range(num_sym_bytes-1):
+#     c=argvinp.chop(8)[i]
+#     estate.add_constraints(c!=0)
+    
 initialize_project(b, estate)
 m = b.factory.simulation_manager(estate)
 while len(m.active) > 0:
     now = datetime.now()
     timestr = now.strftime("%H:%M:%S")
     print(timestr, 'active states = ',len(m.active),end='')
-    try:
-        m.active[0].block().pp()
-    except:
-        print("Disassembly not available")
+    # try:
+    #     m.active[0].block().pp()
+    # except:
+    #     print("Disassembly not available")
     if(not stopping_condition()):
         m.step()
         try:
-            print(', posix out', m.active[0].posix.dumps(1), '\r', end='')
+            print(', posix out', str(m.active[0].posix.dumps(1)), '\r', end='')
         except:
             print('no output errro')
     else:
