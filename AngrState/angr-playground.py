@@ -110,12 +110,16 @@ print(b.loader.shared_objects)
 num_sym_bytes = 20
 input_chars = [claripy.BVS(f'flag{i}',8) for i in range(num_sym_bytes)] + [claripy.BVV('\n', 8)]
 argvinp = claripy.Concat(*input_chars)
+
 simfilename = 'mysimfile'
-simfile = angr.SimFile(simfilename, size=10000)
-estate = b.factory.entry_state(args = [binary_name, '/exp'])
+
+estate = b.factory.entry_state(args = [binary_name, '/f'])
+
+simfile = angr.SimFile(simfilename, size=5*1024*1024)
 simfile.set_state(estate)
-#estate.fs.insert('/f', simfile)
-estate.fs.mount('/',angr.SimHostFilesystem('/home/ajinkya/Guided_HLM/guest_chroot/')) 
+
+estate.fs.insert('/f', simfile)
+#estate.fs.mount('/',angr.SimHostFilesystem('/home/ajinkya/Guided_HLM/guest_chroot/')) 
 #estate = b.factory.entry_state(argc = 2, argv = [binary_name, input_chars])
 # for i in range(num_sym_bytes-1):
 #     c=argvinp.chop(8)[i]
@@ -135,6 +139,10 @@ while len(m.active) > 0:
         m.step()
         try:
             print(', posix out', str(m.active[0].posix.dumps(1)), '\r', end='')
+            for es in m.errored:
+                print('Errored: ', es.error)
+                vl.warning('Errored: ' + str(es.error))
+                    
         except:
             print('no output errro')
     else:

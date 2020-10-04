@@ -47,7 +47,6 @@ class Chunk:
 
 
 class HeapState:
-
     def __init__(self, startAddress):
         self.allocated_chunks = []
         self.fastbin = []
@@ -239,6 +238,7 @@ class HeapState:
                 victim.free = False
                 return victim.address
         else:
+            idx = largebin_index(size)
             self.consolidate()
         while True:
             iteration = 0
@@ -309,21 +309,23 @@ class HeapState:
             if(iteration > MAX_ITERATIONS):
                 break
 
+            # try to take from large bin of the idx
             if nb > MAX_SMALLBIN_SIZE:
-                idx = self.largebin_index(nb)
+#                idx = self.largebin_index(nb)
                 bin = self.largebin[idx]
                 if(len(bin) != 0):
                     victim = bin[0]
                 else:
                     victim = None
-                if ( victim is not None and victim.size <= nb):
+                if ( victim is not None and victim.size >= nb ):
                     i = len(bin)-1
                     victim = bin[i]
+                    # scan the bin in reverse order
                     while i >= 0 and bin[i].size <= nb:
                         i -= 1
-                    if i + 1 < len(bin) and bin[i+1] >= nb:
+                    if i + 1 < len(bin) and bin[i+1].size >= nb:
                         i += 1
-                    if i + 1 < len(bin) and bin[i + 1] >= nb:
+                    if i + 1 < len(bin) and bin[i + 1].size >= nb:
                         i += 1
                     ch = bin[i]
                     size = ch.size
@@ -379,7 +381,10 @@ class HeapState:
 
 
 
-                idx = self.largebin_index(nb)
+                if nb < MAX_SMALLBIN_SIZE:
+                    idx=0
+                else:
+                    idx = self.largebin_index(nb)
                 if all([len(a) == 0 for a in self.largebin]):
                     break
                 while 0<= idx < len(self.largebin):
