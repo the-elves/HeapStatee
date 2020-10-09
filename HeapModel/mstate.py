@@ -39,7 +39,7 @@ class Chunk:
     def dump_chunk(self):
         print ("[" , \
               "address = ",str(hex(self.address)), \
-              "size = ",self.size, \
+              "size = ",str(hex(self.size)), \
               "free = ", self.free, \
               "prev_size = ", self.prev_size, \
               "end address = ", self.address+self.size, \
@@ -543,25 +543,23 @@ class HeapState:
             newsize = oldsize
         else:
             newsize = oldsize + next.size
-            if next == self.top.address and \
+            if next_address == self.top.address and \
                 newsize >= (nb + MIN_SIZE):
 
-                new_chunk = Chunk()
+                new_chunk = old_chunk
                 new_chunk.address = oldp
-                new_chunk.size = newsize
+                new_chunk.size = nb
                 new_chunk.free = False
-                self.allocated_chunks.append(new_chunk)
                 self.top.address = oldp + nb
                 self.top.size = self.top.size - nb
 
                 return new_chunk.address
 
-            elif next != self.top.address and \
-                next.free and\
-                newsize >= nb:
+            elif next.address != self.top.address and \
+                next.free and newsize >= nb:
+
                 newp = oldp
-                next.bin.remove(next)
-                next.bin = None
+
                 #next.bin.remove(newp)
             else:
                 newp = self.malloc(nb-MALLOC_ALIGN_MASK)
@@ -573,6 +571,7 @@ class HeapState:
                 #newp = newchunk.address + 2*SIZE_SZ
                 newsize = newchunk.size
                 if newp == next_address:
+                    #todo check not tested
                     newp = oldp
                     newsize += oldsize
                 else:
@@ -585,9 +584,16 @@ class HeapState:
         else:
             old_chunk = self.get_chunk_by_address(oldp)
             next_chunk = self.get_chunk_by_address(next_address)
+            if next_chunk.bin is not None:
+                next_chunk.bin.remove(next_chunk)
+                next_chunk.bin = None
+                next_chunk.free = False
             old_chunk.size = nb
-            next_chunk.address += nb
-            next_chunk.size -= next_chunk.size - nb
+            next_chunk.address += nb - oldsize
+            next_chunk.size = rem_size
+            self.allocated_chunks.append(next_chunk)
+            self.set_next_size(old_chunk, nb)
+            self.set_next_size(next_chunk, rem_size)
             self.free(next_chunk.address)
         return newp
 
