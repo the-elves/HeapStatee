@@ -70,6 +70,29 @@ class Calloc(SimProcedure):
         return addr + 2*SIZE_SZ
 
 
+class Realloc(SimProcedure):
+    def run(self, oldmem, bytes):
+        hs = self.state.my_heap.heap_state
+        oldp = oldmem - 2 * SIZE_SZ
+        if bytes == 0 and oldmem != 0:
+            hs.free(oldp)
+        if oldmem == 0:
+            new_chunk_ptr = hs.malloc(bytes)
+            new_chunk_ptr += 2*SIZE_SZ
+            return new_chunk_ptr
+        old_chunk = hs.get_chunk_by_address(oldp)
+        old_size = old_chunk.size
+
+        nb = hs.request2size(bytes)
+        old_chunk_ptr = oldmem-2*SIZE_SZ
+        # TODO mmapped chunk logic
+        # todo if single thread (check)
+        newp = hs.realloc(oldp, old_size, nb)
+        newp += 2*SIZE_SZ
+        return newp
+        #todo multi threaded logic
+
+
 class Free(SimProcedure):
     i = 0
     def run(self, address):

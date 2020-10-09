@@ -3,7 +3,7 @@
 import psutil
 import sys
 sys.path.append('../')
-from HeapPlugin.HeapPlugin import HeapPlugin, Malloc, Free, Calloc
+from HeapPlugin.HeapPlugin import HeapPlugin, Malloc, Free, Calloc, Realloc
 from HeapModel.heapquery import *
 import angr
 import claripy
@@ -36,7 +36,9 @@ def initialize_project(b, ss):
     print("[+] hooking calloc")
     b.hook_symbol('calloc', Calloc())
     print("[+] hooking free")
-    b.hook_symbol('free', Free())    
+    b.hook_symbol('free', Free())
+    print("[+] hooking reallloc")
+    b.hook_symbol('realloc', Realloc())
     ss.inspect.b('mem_write', when=angr.BP_BEFORE, action=bp_action_write)
     initialize_logger(b.filename)
     

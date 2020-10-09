@@ -238,7 +238,7 @@ class HeapState:
                 victim.free = False
                 return victim.address
         else:
-            idx = largebin_index(size)
+            idx = self.largebin_index(nb)
             self.consolidate()
         while True:
             iteration = 0
@@ -313,11 +313,11 @@ class HeapState:
             if nb > MAX_SMALLBIN_SIZE:
 #                idx = self.largebin_index(nb)
                 bin = self.largebin[idx]
-                if(len(bin) != 0):
+                if len(bin) != 0:
                     victim = bin[0]
                 else:
                     victim = None
-                if ( victim is not None and victim.size >= nb ):
+                if victim is not None and victim.size >= nb:
                     i = len(bin)-1
                     victim = bin[i]
                     # scan the bin in reverse order
@@ -325,7 +325,7 @@ class HeapState:
                         i -= 1
                     if i + 1 < len(bin) and bin[i+1].size >= nb:
                         i += 1
-                    if i + 1 < len(bin) and bin[i + 1].size >= nb:
+                    if i + 1 < len(bin) and bin[i+1].size >= nb:
                         i += 1
                     ch = bin[i]
                     size = ch.size
@@ -527,6 +527,74 @@ class HeapState:
                 self.consolidate()
 
         #TODO handle unmap_chunk
+
+    '''
+        oldp = pointer to old chunk
+        oldsize = actual chunksize pointed by oldp
+        nb = new required chunksize
+    '''
+    def realloc(self, oldp, oldsize, nb):
+        old_chunk = self.get_chunk_by_address(oldp)
+        assert (old_chunk.size == oldsize)
+        next = self.get_chunk_at_offset(oldp, oldsize)
+        next_address = next.address
+        if oldsize >= nb:
+            newp = oldp
+            newsize = oldsize
+        else:
+            newsize = oldsize + next.size
+            if next == self.top.address and \
+                newsize >= (nb + MIN_SIZE):
+
+                new_chunk = Chunk()
+                new_chunk.address = oldp
+                new_chunk.size = newsize
+                new_chunk.free = False
+                self.allocated_chunks.append(new_chunk)
+                self.top.address = oldp + nb
+                self.top.size = self.top.size - nb
+
+                return new_chunk.address
+
+            elif next != self.top.address and \
+                next.free and\
+                newsize >= nb:
+                newp = oldp
+                next.bin.remove(next)
+                next.bin = None
+                #next.bin.remove(newp)
+            else:
+                newp = self.malloc(nb-MALLOC_ALIGN_MASK)
+                newchunk = self.get_chunk_by_address(newp)
+                if (newp == 0):
+                    return 0
+                #not needed because our malloc gives the address of chunk
+                # and not the user area
+                #newp = newchunk.address + 2*SIZE_SZ
+                newsize = newchunk.size
+                if newp == next_address:
+                    newp = oldp
+                    newsize += oldsize
+                else:
+                    self.free(oldp)
+                    return newchunk.address
+        rem_size = newsize - nb
+        if rem_size < MIN_SIZE:
+            old_chunk.size = newsize
+            next_chunk = self.get_chunk_by_address(next_address)
+        else:
+            old_chunk = self.get_chunk_by_address(oldp)
+            next_chunk = self.get_chunk_by_address(next_address)
+            old_chunk.size = nb
+            next_chunk.address += nb
+            next_chunk.size -= next_chunk.size - nb
+            self.free(next_chunk.address)
+        return newp
+
+
+
+
+
 
 
     def dump_chunk(self, chunk, PDEBUG):
