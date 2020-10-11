@@ -85,11 +85,6 @@ def bp_action_write(state):
 
 def alarm_handler(signum, frame):
     exit()
-
-    
-
-signal.signal(signal.SIGALRM, alarm_handler)
-signal.alarm(int(time_limit))
         
 
 def stopping_condition():
@@ -97,32 +92,28 @@ def stopping_condition():
         return True
 
     return False
-# binary_name = TestCases/ls
-#binary_name = '/bin/ls'
+
 binary_name = sys.argv[1]
 b = angr.Project(binary_name, auto_load_libs=True,
                  use_sim_procedures=False,
                  force_load_libs=['../../tools/glibc-dir/install/lib64/libc-2.27.so',
                                   '/home/ajinkya/Guided_HLM/tools/glibc-dir/install/lib64/ld-2.27.so'])
 print(b.loader.shared_objects)
-# exit() 
-# main_addr = b.loader.find_symbol('main').rebased_addr
-# print("%x"%(main_addr))
-# cfg = b.analyses.CFGFast()
+
 num_sym_bytes = 20
 input_chars = [claripy.BVS(f'flag{i}',8) for i in range(num_sym_bytes)] + [claripy.BVV('\n', 8)]
 argvinp = claripy.Concat(*input_chars)
 
-simfilename = 'mysimfile'
+# estate = b.factory.entry_state(args = [binary_name, '/f'])
+# simfilename = 'mysimfile'
+# simfile = angr.SimFile(simfilename, size=5*1024*1024)
+# simfile.set_state(estate)
+# estate.fs.insert('/f', simfile)
 
-estate = b.factory.entry_state(args = [binary_name, '/f'])
+estate = b.factory.entry_state(args = [binary_name, '/kilo-exp'])
+estate.fs.mount('/',angr.SimHostFilesystem('/home/ajinkya/Guided_HLM/guest_chroot/'))
 
-simfile = angr.SimFile(simfilename, size=5*1024*1024)
-simfile.set_state(estate)
-
-estate.fs.insert('/f', simfile)
-#estate.fs.mount('/',angr.SimHostFilesystem('/home/ajinkya/Guided_HLM/guest_chroot/')) 
-#estate = b.factory.entry_state(argc = 2, argv = [binary_name, input_chars])
+# estate = b.factory.entry_state(argc = 2, argv = [binary_name, input_chars])
 # for i in range(num_sym_bytes-1):
 #     c=argvinp.chop(8)[i]
 #     estate.add_constraints(c!=0)
