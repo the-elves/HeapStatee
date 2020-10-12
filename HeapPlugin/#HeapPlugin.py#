@@ -7,8 +7,6 @@ l = logging.getLogger('heap_analysis')
 vl = logging.getLogger('vuln_logger');
 
 
-
-
 class HeapPlugin(SimStatePlugin):
     # TODO merge and widen
     # def merge(self, _others, _merge_conditions, _common_ancestor=None):
@@ -30,7 +28,7 @@ class HeapPlugin(SimStatePlugin):
     @SimStatePlugin.memo
     def copy(self, memo):
         heap_copy = deepcopy(self.heap_state)
-        return HeapPlugin(h = heap_copy)
+        return HeapPlugin(heap_copy)
 
 
 class Malloc(SimProcedure):
