@@ -398,7 +398,7 @@ class HeapState:
                     idx=0
                 else:
                     idx = self.largebin_index(nb)
-                if all([len(self.largebin[bidx]) == 0 and bidx > idx for bidx in range(len(self.largebin))]):
+                if all([len(self.largebin[bidx]) == 0 for bidx in range(idx, len(self.largebin))]):
                     break
                 while 0<= idx < len(self.largebin):
                     if(len(self.largebin[idx]) == 0):
