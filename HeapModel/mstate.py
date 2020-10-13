@@ -130,7 +130,7 @@ class HeapState:
             r = 124 + (sz >> 18)
         else:
             r = 126
-        print("lb idx", r-N_SMALL_BINS, "sz", sz)
+        # print("lb idx", r-N_SMALL_BINS, "sz", sz)
         return r-N_SMALL_BINS
 
     def allocate_from_smallbin(self, sz):
@@ -385,11 +385,11 @@ class HeapState:
                     idx=0
                 else:
                     idx = self.largebin_index(nb)
-                if all([len(a) == 0 for a in self.largebin]):
+                if all([len(self.largebin[bidx]) == 0 and bidx > idx for bidx in range(len(self.largebin))]):
                     break
                 while 0<= idx < len(self.largebin):
-                    idx += 1
                     if(len(self.largebin[idx]) == 0):
+                        idx += 1
                         continue
                     bin = self.largebin[idx]
                     victim = bin[0]
