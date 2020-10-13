@@ -110,7 +110,7 @@ argvinp = claripy.Concat(*input_chars)
 # simfile.set_state(estate)
 # estate.fs.insert('/f', simfile)
 
-estate = b.factory.entry_state(args = [binary_name, '/kilo-exp'])
+estate = b.factory.entry_state(args = sys.argv[1:])
 estate.fs.mount('/',angr.SimHostFilesystem('/home/ajinkya/Guided_HLM/guest_chroot/'))
 
 # estate = b.factory.entry_state(argc = 2, argv = [binary_name, input_chars])

@@ -41,6 +41,8 @@ class Malloc(SimProcedure):
         print(isinstance(s, claripy.BVV))
         hs = self.state.my_heap.heap_state
         rip = self.state.solver.eval(self.state.regs.rip)
+        print(f'rip {rip:x} malloc requested {Malloc.i} with requst_size {s}, allocated size {hs.request2size(s)}, heap state before')
+        hs.dump()
         try:
             addr = hs.malloc(s)
         except Vulnerability as V:
@@ -60,24 +62,31 @@ class Calloc(SimProcedure):
         n = self.state.solver.eval(num)
         hs = self.state.my_heap.heap_state
         rip = self.state.solver.eval(self.state.regs.rip)
+        print(f'rip {rip:x} calloc requested {Calloc.i} with size {hs.request2size(s)} heap state before call: ')
+        hs.dump()
         try:
             addr = hs.malloc(n*s)
         except Vulnerability as V:
             print(V.msg, V.addr)
             l.warning(V.msg + " @ " + str(V.addr))
             vl.warning(V.msg + " @ " + str(V.addr))
-        print(f'rip {rip:x} calloc called {Malloc.i} with size {hs.request2size(s)}, allocated at 0x{addr:x}')
+        print(f'rip {rip:x} calloc called {Calloc.i} with size {hs.request2size(s)}, allocated at 0x{addr:x}')
         Malloc.i += 1
         hs.dump()
         return addr + 2*SIZE_SZ
 
 
 class Realloc(SimProcedure):
+    i = 0
     def run(self, soldmem, sbytes):
         oldmem = self.state.solver.eval(soldmem)
         nbytes = self.state.solver.eval(sbytes)
         hs = self.state.my_heap.heap_state
         oldp = oldmem - 2 * SIZE_SZ
+        print(f'rip {rip:x} realloc requested {Realloc.i} with size {hs.request2size(s)} heap state before call: ')
+        hs.dump()
+        
+
         if nbytes == 0 and oldmem != 0:
             hs.free(oldp)
         if oldmem == 0:
