@@ -124,10 +124,10 @@ while len(m.active) > 0:
     now = datetime.now()
     timestr = now.strftime("%H:%M:%S")
     print(timestr, 'active states = ',len(m.active),end='')
-    # try:
-    #     m.active[0].block().pp()
-    # except:
-    #     print("Disassembly not available")
+    try:
+        m.active[0].block().pp()
+    except:
+        print("Disassembly not available")
     if(not stopping_condition()):
         m.step()
         try:
@@ -137,7 +137,7 @@ while len(m.active) > 0:
                 vl.warning('Errored: ' + str(es.error))
                     
         except:
-            print('no output errro')
+            print('\nno output errro')
     else:
         print('System memory too low, exiting')
         break
