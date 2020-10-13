@@ -2,6 +2,7 @@ from copy import deepcopy
 from angr import SimStatePlugin, SimProcedure
 from HeapModel.mstate import HeapState, SIZE_SZ
 from HeapModel.Vulns import *
+import claripy
 import logging
 l = logging.getLogger('heap_analysis')
 vl = logging.getLogger('vuln_logger');
@@ -37,6 +38,7 @@ class Malloc(SimProcedure):
     i = 0
     def run(self, size):
         s = self.state.solver.eval(size)
+        print(isinstance(s, claripy.BVV))
         hs = self.state.my_heap.heap_state
         rip = self.state.solver.eval(self.state.regs.rip)
         try:
@@ -72,7 +74,7 @@ class Calloc(SimProcedure):
 
 class Realloc(SimProcedure):
     def run(self, soldmem, sbytes):
-        oldmame = self.state.solver.eval(soldmem)
+        oldmem = self.state.solver.eval(soldmem)
         nbytes = self.state.solver.eval(sbytes)
         hs = self.state.my_heap.heap_state
         oldp = oldmem - 2 * SIZE_SZ

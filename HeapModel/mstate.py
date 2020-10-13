@@ -220,6 +220,19 @@ class HeapState:
         else:
             return (req + SIZE_SZ + MALLOC_ALIGN_MASK) & ~MALLOC_ALIGN_MASK
 
+
+
+    # returns a tuple (min, max) representing minimum and maximum request
+    # That can be satisified with the chunk of size 'size'
+    def size2request(self, size):
+        if size <= MIN_SIZE:
+            return (0, MIN_SIZE - SIZE_SZ - MALLOC_ALIGN_MASK)
+        else:
+            assert (size % MALLOC_ALLIGNMENT == 0)
+            return (size, size + MALLOC_ALLIGNMENT)
+
+
+
     def set_next_size(self, ch, sz):
         next_chunk = self.get_chunk_at_offset(ch.address, ch.size)
         next_chunk.prev_size = sz
