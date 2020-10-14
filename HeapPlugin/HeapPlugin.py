@@ -1,7 +1,10 @@
 from copy import deepcopy
-from angr import SimStatePlugin, SimProcedure
+from angr import SimStatePlugin, SimProcedure, SimState
+from angr.calling_conventions import SimCCSystemVAMD64
+from angr.engines import SimSuccessors
 from HeapModel.mstate import HeapState, SIZE_SZ
 from HeapModel.Vulns import *
+from HeapModel.heapquery import *
 import claripy
 import logging
 l = logging.getLogger('heap_analysis')
@@ -107,21 +110,33 @@ class Realloc(SimProcedure):
 class Free(SimProcedure):
     i = 0
     def run(self, address):
-        add = self.state.solver.eval(address)
-        if(add == 0):
-            l.warning('free 0 called, skipping')
-            vl.warning('free 0 called, skipping')
-            return
-        add = add - 2 * SIZE_SZ
-        print(address)
-        print(f'free called {Free.i}, address {add}')
-        hs = self.state.my_heap.heap_state
-        try:
-            hs.free(add)
-        except Vulnerability as V:
-            print("Error")
-            l.warning(V.msg + " @ " + str(V.addr))
-            vl.warning(V.msg + " @ " + str(V.addr))
+        ohs = self.state.my_heap.heap_state
+        possible_addresses = possible_free_concretizations(ohs)
+        self.state: SimState
+        for pa in possible_addresses:
+            sat = self.state.solver.satisfiable(extra_constraints=[address == pa])
+            add = pa
+            if sat :
+                state_copy = self.state.copy()
+                hs = state_copy.my_heap.heap_state
 
-        Free.i += 1
+                if(add == 0):
+                    l.warning('free 0 called, skipping')
+                    vl.warning('free 0 called, skipping')
+                    continue
+                add = add - 2 * SIZE_SZ
+                print(address)
+                print(f'free called {Free.i}, address {add}')
+                try:
+                    hs.free(add)
+                except Vulnerability as V:
+                    print("Error")
+                    l.warning(V.msg + " @ " + str(V.addr))
+                    vl.warning(V.msg + " @ " + str(V.addr))
+
+                orig_state = self.state
+                self.state = state_copy
+                self.ret()
+                self.state = orig_state
+                Free.i += 1
 

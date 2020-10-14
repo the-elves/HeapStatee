@@ -53,3 +53,11 @@ def possible_malloc_concretizations(heap: HeapState):
     top_req = (maxreq + MALLOC_ALLIGNMENT) & MALLOC_ALIGN_MASK
     possible_allocation_sizes.append(top_req)
     return possible_allocation_sizes
+
+def possible_free_concretizations(heap: HeapState):
+    possible_addresses = []
+    chunk = heap.get_chunk_by_address(heap.startAddress)
+    while chunk is not None:
+        possible_addresses.append(chunk.address + 2 * SIZE_SZ)
+        chunk = heap.get_chunk_at_offset(chunk.address, chunk.size)
+    return possible_addresses
