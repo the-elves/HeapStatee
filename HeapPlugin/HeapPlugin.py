@@ -83,7 +83,7 @@ class Realloc(SimProcedure):
         nbytes = self.state.solver.eval(sbytes)
         hs = self.state.my_heap.heap_state
         oldp = oldmem - 2 * SIZE_SZ
-        print(f'rip {rip:x} realloc requested {Realloc.i} with size {hs.request2size(s)} heap state before call: ')
+        print(f'realloc requested {Realloc.i} with size {hs.request2size(nbytes)} heap state before call: ')
         hs.dump()
         if nbytes == 0 and oldmem != 0:
             hs.free(oldp)
