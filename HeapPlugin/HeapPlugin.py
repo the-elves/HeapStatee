@@ -41,7 +41,6 @@ class Malloc(SimProcedure):
     i = 0
     def run(self, size):
         s = self.state.solver.eval(size)
-        print(isinstance(s, claripy.BVV))
         hs = self.state.my_heap.heap_state
         rip = self.state.solver.eval(self.state.regs.rip)
         print(f'rip {rip:x} malloc requested {Malloc.i} with requst_size {s}, allocated size {hs.request2size(s)}, heap state before')
@@ -119,7 +118,6 @@ class Free(SimProcedure):
             if sat :
                 state_copy = self.state.copy()
                 hs = state_copy.my_heap.heap_state
-
                 if(add == 0):
                     l.warning('free 0 called, skipping')
                     vl.warning('free 0 called, skipping')
