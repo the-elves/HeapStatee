@@ -124,24 +124,31 @@ while len(m.active) > 0:
     now = datetime.now()
     timestr = now.strftime("%H:%M:%S")
     print(timestr, 'active states = ',len(m.active),end='')
-    try:
-        m.active[0].block().pp()
-    except:
-        print("Disassembly not available")
+    # try:
+    #     m.active[0].block().pp()
+    # except:
+    #     print("Disassembly not available")
     if(not stopping_condition()):
         m.step()
         try:
             print(', posix out', str(m.active[0].posix.dumps(1)), '\r', end='')
-            for es in m.errored:
-                print('Errored: ', es.error)
-                vl.warning('Errored: ' + str(es.error))
+            # for es in m.errored:
+            #     print('Errored: ', es.error)
+            #     vl.warning('Errored: ' + str(es.error))
                     
         except:
-            print('\nno output errro')
+            print('\nno output error')
     else:
         print('System memory too low, exiting')
         break
 
+print("============== Errored States ======================")
+for es in m.errored:
+    print('Errored: ' + str(es.error))
+    vl.warning('Errored: ' + str(es.error))
+    print(str(es.state.callstack))
+
+    
     # print('--')
     # print(len(m.active))
 # 8605882639
