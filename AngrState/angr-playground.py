@@ -3,13 +3,15 @@
 import psutil
 import sys
 sys.path.append('../')
-from HeapPlugin.HeapPlugin import HeapPlugin, Malloc, Free, Calloc, Realloc
+from HeapPlugin.HeapPlugin import HeapPlugin, Malloc, Free, Calloc, Realloc, Perror
 from HeapModel.heapquery import *
 import angr
 import claripy
 import logging
 from datetime import datetime
 import signal
+import pdb
+from angr.exploration_techniques import DFS
 
 HOUR = 60*60
 time_limit = HOUR/4
@@ -39,6 +41,8 @@ def initialize_project(b, ss):
     b.hook_symbol('free', Free())
     print("[+] hooking reallloc")
     b.hook_symbol('realloc', Realloc())
+    print("[+] hooking perror")
+    b.hook_symbol('perror', Perror())
     ss.inspect.b('mem_write', when=angr.BP_BEFORE, action=bp_action_write)
     initialize_logger(b.filename)
     
@@ -93,11 +97,22 @@ def stopping_condition():
 
     return False
 
+
+next_stopping_addr = -1
+def pdb_stopping_condition():    
+    if m.active[0].solver.eval(m.active[0].regs.rip) == next_stopping_addr or \
+       next_stopping_addr == -1:
+        return True
+    else: return False
+    
+
 binary_name = sys.argv[1]
 b = angr.Project(binary_name, auto_load_libs=True,
                  use_sim_procedures=False,
                  force_load_libs=['../../tools/glibc-dir/install/lib64/libc-2.27.so',
-                                  '/home/ajinkya/Guided_HLM/tools/glibc-dir/install/lib64/ld-2.27.so'])
+                                  '/home/ajinkya/Guided_HLM/tools/glibc-dir/install/lib64/ld-2.27.so',
+                                  '/home/ajinkya/Guided_HLM/tools/openjpeg/build/bin/libopenjp2.so.2.3.1']
+                 )
 print(b.loader.shared_objects)
 
 num_sym_bytes = 20
@@ -110,8 +125,11 @@ argvinp = claripy.Concat(*input_chars)
 # simfile.set_state(estate)
 # estate.fs.insert('/f', simfile)
 
+
 estate = b.factory.entry_state(args = sys.argv[1:])
-estate.fs.mount('/',angr.SimHostFilesystem('/home/ajinkya/Guided_HLM/guest_chroot/'))
+host_file_system = angr.SimHostFilesystem('/home/ajinkya/Guided_HLM/guest_chroot/')
+host_file_system.set_state(estate)
+estate.fs.mount('/home/user/exploits/',host_file_system)
 
 # estate = b.factory.entry_state(argc = 2, argv = [binary_name, input_chars])
 # for i in range(num_sym_bytes-1):
@@ -120,14 +138,23 @@ estate.fs.mount('/',angr.SimHostFilesystem('/home/ajinkya/Guided_HLM/guest_chroo
     
 initialize_project(b, estate)
 m = b.factory.simulation_manager(estate)
+m.use_technique(DFS())
+# pdb.set_trace()
 while len(m.active) > 0:
     now = datetime.now()
     timestr = now.strftime("%H:%M:%S")
-    print(timestr, 'active states = ',len(m.active),end='')
-    # try:
-    #     m.active[0].block().pp()
-    # except:
-    #     print("Disassembly not available")
+    print(timestr, 'active states = ',len(m.active), end='         ')
+    if True:
+        try:
+            for s in m.active:
+                print("=============>", m.active)
+                s.my_heap.heap_state.dump()
+                s.block().pp()
+                print(s.callstack)
+                if pdb_stopping_condition():
+                    pdb.set_trace()     
+        except:
+            print("Disassembly not available")
     if(not stopping_condition()):
         m.step()
         try:
@@ -141,12 +168,12 @@ while len(m.active) > 0:
     else:
         print('System memory too low, exiting')
         break
-
-print("============== Errored States ======================")
-for es in m.errored:
-    print('Errored: ' + str(es.error))
-    vl.warning('Errored: ' + str(es.error))
-    print(str(es.state.callstack))
+if len(m.errored) > 0:
+    print("============== Errored States ======================")
+    for es in m.errored:
+        print('Errored: ' + str(es.error))
+        vl.warning('Errored: ' + str(es.error))
+        print(str(es.state.callstack))
 
     
     # print('--')

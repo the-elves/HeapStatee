@@ -1,10 +1,17 @@
+
 from copy import deepcopy
-from angr import SimStatePlugin, SimProcedure
+from angr import SimStatePlugin, SimProcedure, SimState
+from angr.calling_conventions import SimCCSystemVAMD64
+from angr.engines import SimSuccessors
 from HeapModel.mstate import HeapState, SIZE_SZ
 from HeapModel.Vulns import *
+from HeapModel.heapquery import *
+import claripy
 import logging
 l = logging.getLogger('heap_analysis')
 vl = logging.getLogger('vuln_logger');
+
+
 
 
 class HeapPlugin(SimStatePlugin):
@@ -28,7 +35,7 @@ class HeapPlugin(SimStatePlugin):
     @SimStatePlugin.memo
     def copy(self, memo):
         heap_copy = deepcopy(self.heap_state)
-        return HeapPlugin(heap_copy)
+        return HeapPlugin(h = heap_copy)
 
 
 class Malloc(SimProcedure):
@@ -37,6 +44,8 @@ class Malloc(SimProcedure):
         s = self.state.solver.eval(size)
         hs = self.state.my_heap.heap_state
         rip = self.state.solver.eval(self.state.regs.rip)
+        print(f'rip {rip:x} malloc requested {Malloc.i} with requst_size {s}, allocated size {hs.request2size(s)}, heap state before')
+        hs.dump()
         try:
             addr = hs.malloc(s)
         except Vulnerability as V:
@@ -56,24 +65,29 @@ class Calloc(SimProcedure):
         n = self.state.solver.eval(num)
         hs = self.state.my_heap.heap_state
         rip = self.state.solver.eval(self.state.regs.rip)
+        print(f'rip {rip:x} calloc requested {Calloc.i} with size {hs.request2size(s)} heap state before call: ')
+        hs.dump()
         try:
             addr = hs.malloc(n*s)
         except Vulnerability as V:
             print(V.msg, V.addr)
             l.warning(V.msg + " @ " + str(V.addr))
             vl.warning(V.msg + " @ " + str(V.addr))
-        print(f'rip {rip:x} calloc called {Malloc.i} with size {hs.request2size(s)}, allocated at 0x{addr:x}')
+        print(f'rip {rip:x} calloc called {Calloc.i} with size {hs.request2size(s)}, allocated at 0x{addr:x}')
         Malloc.i += 1
         hs.dump()
         return addr + 2*SIZE_SZ
 
 
 class Realloc(SimProcedure):
+    i = 0
     def run(self, soldmem, sbytes):
-        oldmame = self.state.solver.eval(soldmem)
+        oldmem = self.state.solver.eval(soldmem)
         nbytes = self.state.solver.eval(sbytes)
         hs = self.state.my_heap.heap_state
         oldp = oldmem - 2 * SIZE_SZ
+        print(f'realloc requested {Realloc.i} with size {hs.request2size(nbytes)} heap state before call: ')
+        hs.dump()
         if nbytes == 0 and oldmem != 0:
             hs.free(oldp)
         if oldmem == 0:
@@ -96,21 +110,38 @@ class Realloc(SimProcedure):
 class Free(SimProcedure):
     i = 0
     def run(self, address):
-        add = self.state.solver.eval(address)
-        if(add == 0):
-            l.warning('free 0 called, skipping')
-            vl.warning('free 0 called, skipping')
-            return
-        add = add - 2 * SIZE_SZ
-        print(address)
-        print(f'free called {Free.i}, address {add}')
-        hs = self.state.my_heap.heap_state
-        try:
-            hs.free(add)
-        except Vulnerability as V:
-            print("Error")
-            l.warning(V.msg + " @ " + str(V.addr))
-            vl.warning(V.msg + " @ " + str(V.addr))
+        ohs = self.state.my_heap.heap_state
+        possible_addresses = possible_free_concretizations(ohs)
+        print(f'Possible addresses = {possible_addresses}')
+        self.state: SimState
+        for pa in possible_addresses:
+            sat = self.state.solver.satisfiable(extra_constraints=[address == pa])
+            add = pa
+            if sat :
+                state_copy = self.state.copy()
+                hs = state_copy.my_heap.heap_state
+                if(add == 0):
+                    l.warning('free 0 called, skipping')
+                    vl.warning('free 0 called, skipping')
+                    continue
+                add = add - 2 * SIZE_SZ
+                print(address)
+                print(f'free called {Free.i}, address {add}')
+                try:
+                    hs.free(add)
+                except Vulnerability as V:
+                    print("Error")
+                    l.warning(V.msg + " @ " + str(V.addr))
+                    vl.warning(V.msg + " @ " + str(V.addr))
 
-        Free.i += 1
+                orig_state = self.state
+                self.state = state_copy
+                self.ret()
+                self.state = orig_state
+                Free.i += 1
 
+
+
+class Perror(SimProcedure):
+    def run(self):
+        self.exit(1)

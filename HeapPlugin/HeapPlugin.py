@@ -111,6 +111,7 @@ class Free(SimProcedure):
     def run(self, address):
         ohs = self.state.my_heap.heap_state
         possible_addresses = possible_free_concretizations(ohs)
+        print(f'Possible addresses = {possible_addresses}')
         self.state: SimState
         for pa in possible_addresses:
             sat = self.state.solver.satisfiable(extra_constraints=[address == pa])
@@ -138,3 +139,8 @@ class Free(SimProcedure):
                 self.state = orig_state
                 Free.i += 1
 
+
+
+class Perror(SimProcedure):
+    def run(self):
+        self.exit(1)
