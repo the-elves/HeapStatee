@@ -85,8 +85,9 @@ class Realloc(SimProcedure):
         nbytes = self.state.solver.eval(sbytes)
         hs = self.state.my_heap.heap_state
         oldp = oldmem - 2 * SIZE_SZ
-        print(f'realloc requested {Realloc.i} with size {hs.request2size(nbytes)} heap state before call: ')
-        #hs.dump()
+        nb = hs.request2size(nbytes)
+        print(f'realloc requested {Realloc.i} with size {nb:x}@{oldp:x} heap state before call: ')
+        hs.dump()
         if nbytes == 0 and oldmem != 0:
             hs.free(oldp)
         if oldmem == 0:
@@ -94,14 +95,17 @@ class Realloc(SimProcedure):
             new_chunk_ptr += 2*SIZE_SZ
             return new_chunk_ptr
         old_chunk = hs.get_chunk_by_address(oldp)
-        old_size = old_chunk.size
+        if old_chunk is None:
+            vl.warning(f'Freeing Non existent chunk in realloc requested {Realloc.i} with size {nb:x}@{oldp:x} ')
+        else:
+            old_size = old_chunk.size
 
-        nb = hs.request2size(nbytes)
         old_chunk_ptr = oldmem-2*SIZE_SZ
         # TODO mmapped chunk logic
         # todo if single thread (check)
         newp = hs.realloc(oldp, old_size, nb)
         newp += 2*SIZE_SZ
+        Realloc.i+=1
         return newp
         #todo multi threaded logic
 

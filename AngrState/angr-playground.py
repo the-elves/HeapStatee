@@ -131,19 +131,18 @@ if 'HEAPSTATE_LIBS' in os.environ.keys():
     loader_libraries.append(os.environ['HEAPSTATE_LIBS'])
 
 b = angr.Project(binary_name, auto_load_libs=True,
-                 use_sim_procedures=False,
                  force_load_libs=loader_libraries
                  )
 
 print_libs(b)
 
 
-# num_sym_bytes = 20
-# input_chars = [claripy.BVS(f'flag{i}',8) for i in range(num_sym_bytes)] + [claripy.BVV('\n', 8)]
-# argvinp = claripy.Concat(*input_chars)
+num_sym_bytes = 20
+input_chars = [claripy.BVS(f'flag{i}',8) for i in range(num_sym_bytes)] + [claripy.BVV('\n', 8)]
+argvinp = claripy.Concat(*input_chars)
 
 
-estate = b.factory.entry_state(args = sys.argv[1:], model='tracing')
+estate = b.factory.entry_state(args = sys.argv[1:])
 
 # estate = b.factory.entry_state(argc = 2, argv = [binary_name, input_chars])
 # for i in range(num_sym_bytes-1):
@@ -156,18 +155,18 @@ m.use_technique(DFS())
 # pdb.set_trace()
 progress=0
 
-m.run()
-for s in m.deadended:
-    print('posix out', str(s.posix.dumps(1)))
-    print('posix err', str(s.posix.dumps(2)))
-exit()
+# m.run()
+# for s in m.deadended:
+#     print('posix out', str(s.posix.dumps(1)))
+#     print('posix err', str(s.posix.dumps(2)))
+# exit()
 
 while len(m.active) > 0:
     now = datetime.now()
     timestr = now.strftime("%H:%M:%S")
     addr = m.active[0].solver.eval(m.active[0].regs.ip)
     print(timestr, 'active states = ', len(m.active), 'rip = ', hex(addr))
-    if True:
+    if False:
         try:
             for s in m.active:
                 print("=============>", m.active)
@@ -205,7 +204,6 @@ if len(m.errored) > 0:
         vl.warning('Errored: ' + str(es.error))
         print(str(es.state.callstack))
 
-    
     # print('--')
     # print(len(m.active))
 # 8605882639
