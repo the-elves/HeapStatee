@@ -13,7 +13,7 @@ import signal
 import pdb
 from angr.exploration_techniques import DFS
 import os
-
+from utils.utils import dump_concretized_file
 HOUR = 60*60
 time_limit = HOUR/4
 l = logging.getLogger('heap_analysis')
@@ -47,8 +47,8 @@ def initialize_project(b, ss):
     ss.inspect.b('mem_write', when=angr.BP_BEFORE, action=bp_action_write)
     initialize_logger(b.filename)
     setup_filesystem(ss)
-    
-    
+
+
 def handle_heap_write(state):
     write_address = state.solver.eval(state.inspect.mem_write_address)
     wl = state.solver.eval(state.inspect.mem_write_length)
@@ -60,6 +60,7 @@ def handle_heap_write(state):
         c = chunk_containing_address(wa, state.my_heap.heap_state)
         if c is None:
             l.warning('Writing outside chunks @ 0x{:x}'.format(write_address))
+            vuln=True
         else:
             if write_in_free_chunk(wa, state.my_heap.heap_state):
                 conc_argv = state.solver.eval(argvinp)
@@ -81,6 +82,8 @@ def handle_heap_write(state):
                 vuln = True
     if(vuln):
         h.heap_state.dump()
+        dump_concretized_file(state)
+        pdb.set_trace()
 
                 
 
@@ -95,10 +98,10 @@ def setup_filesystem(estate):
     host_file_system.set_state(estate)
     estate.fs.mount('/exploits/',host_file_system)
     
-    simfilename = 'mysimfile'
-    simfile = angr.SimFile(simfilename, size=5*1024*1024)
-    simfile.set_state(estate)
-    estate.fs.insert('/sym-files/', simfile)
+    symfilename = 'mysymfile'
+    symfile = angr.SimFile(symfilename, size=5*1024*1024)
+    symfile.set_state(estate)
+    estate.fs.insert('/symfiles/', symfile)
 
     
 def alarm_handler(signum, frame):

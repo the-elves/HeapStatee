@@ -5,12 +5,11 @@ from angr.engines import SimSuccessors
 from HeapModel.mstate import HeapState, SIZE_SZ
 from HeapModel.Vulns import *
 from HeapModel.heapquery import *
+from utils.utils import dump_concretized_file
 import claripy
 import logging
 l = logging.getLogger('heap_analysis')
 vl = logging.getLogger('vuln_logger');
-
-
 
 
 class HeapPlugin(SimStatePlugin):
@@ -51,6 +50,7 @@ class Malloc(SimProcedure):
             print(V.msg, V.addr)
             l.warning(V.msg + " @ " + str(V.addr))
             vl.warning('vl raised warning', V.msg + " @ " + str(V.addr))
+            dump_concretized_file(self.state)
         print(f'rip {rip:x} malloc called {Malloc.i} with requst_size {s}, allocated size {hs.request2size(s)}, allocated at 0x{addr:x}')
         Malloc.i += 1
         # hs.dump()
@@ -72,6 +72,7 @@ class Calloc(SimProcedure):
             print(V.msg, V.addr)
             l.warning(V.msg + " @ " + str(V.addr))
             vl.warning('vlraised warning', V.msg + " @ " + str(V.addr))
+            dump_concretized_file(self.state)
         print(f'rip {rip:x} calloc called {Calloc.i} with size {hs.request2size(s)}, allocated at 0x{addr:x}')
         Malloc.i += 1
         #hs.dump()
@@ -97,13 +98,20 @@ class Realloc(SimProcedure):
         old_chunk = hs.get_chunk_by_address(oldp)
         if old_chunk is None:
             vl.warning(f'Freeing Non existent chunk in realloc requested {Realloc.i} with size {nb:x}@{oldp:x} ')
+            dump_concretized_file(self.state)
         else:
             old_size = old_chunk.size
 
         old_chunk_ptr = oldmem-2*SIZE_SZ
         # TODO mmapped chunk logic
         # todo if single thread (check)
-        newp = hs.realloc(oldp, old_size, nb)
+        try:
+            newp = hs.realloc(oldp, old_size, nb)
+        except Vulnerability as V:
+            print(V.msg, V.addr)
+            l.warning(V.msg + " @ " + str(V.addr))
+            vl.warning('vlraised warning', V.msg + " @ " + str(V.addr))
+            dump_concretized_file(self.state)
         newp += 2*SIZE_SZ
         Realloc.i+=1
         return newp
@@ -137,6 +145,7 @@ class Free(SimProcedure):
                     print("Error")
                     l.warning(V.msg + " @ " + str(V.addr))
                     vl.warning('vl warning: ', V.msg + " @ " + str(V.addr))
+                    dump_concretized_file(self.state)
 
                 orig_state = self.state
                 self.state = state_copy
