@@ -5,3 +5,6 @@ class Vulnerability(Exception):
 
 class DoubleFreeVuln(Vulnerability):
     pass
+
+class ChunkNotFoundException(Vulnerability):
+    pass

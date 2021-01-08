@@ -14,8 +14,11 @@ import pdb
 from angr.exploration_techniques import DFS
 import os
 from utils.utils import dump_concretized_file
+
 HOUR = 60*60
-time_limit = HOUR/4
+time_limit = HOUR*2
+start_time = datetime.now()
+
 l = logging.getLogger('heap_analysis')
 h = HeapPlugin(startingAddress=0x2000000)
 
@@ -83,7 +86,7 @@ def handle_heap_write(state):
     if(vuln):
         h.heap_state.dump()
         dump_concretized_file(state)
-        pdb.set_trace()
+#        pdb.set_trace()
 
                 
 
@@ -99,7 +102,7 @@ def setup_filesystem(estate):
     estate.fs.mount('/exploits/',host_file_system)
     
     symfilename = 'mysymfile'
-    symfile = angr.SimFile(symfilename, size=5*1024*1024)
+    symfile = angr.SimFile(symfilename, size=5*1024)
     symfile.set_state(estate)
     estate.fs.insert('/symfiles/mysymfile', symfile)
 
@@ -111,7 +114,8 @@ def alarm_handler(signum, frame):
 def stopping_condition():
     if psutil.virtual_memory().percent > 90:
         return True
-
+    if (datetime.now() - start_time).total_seconds() > time_limit:
+        return True
     return False
 
 def print_libs(p):
@@ -127,7 +131,7 @@ def pdb_stopping_condition():
     else: return False
     
 
-binary_name = sys.argv[1]
+binary_name = sys.argv[2]
 loader_libraries = ['../../tools/glibc-dir/install/lib64/libc-2.27.so',
                                   '/home/ajinkya/Guided_HLM/tools/glibc-dir/install/lib64/ld-2.27.so']
 if 'HEAPSTATE_LIBS' in os.environ.keys():
@@ -145,7 +149,7 @@ input_chars = [claripy.BVS(f'flag{i}',8) for i in range(num_sym_bytes)] + [clari
 argvinp = claripy.Concat(*input_chars)
 
 
-estate = b.factory.entry_state(args = sys.argv[1:])
+estate = b.factory.entry_state(args = sys.argv[2:])
 
 # estate = b.factory.entry_state(argc = 2, argv = [binary_name, input_chars])
 # for i in range(num_sym_bytes-1):
@@ -166,10 +170,11 @@ progress=0
 
 while len(m.active) > 0:
     now = datetime.now()
+    starting_time = now
     timestr = now.strftime("%H:%M:%S")
     addr = m.active[0].solver.eval(m.active[0].regs.ip)
     print(timestr, 'active states = ', len(m.active), 'rip = ', hex(addr))
-    if False:
+    if sys.argv[1] == 'd':
         try:
             for s in m.active:
                 print("=============>", m.active)
@@ -183,10 +188,9 @@ while len(m.active) > 0:
             print("Disassembly not available")
     if(not stopping_condition()):
         m.step()
-        try:
-            
-            print('posix out', str(m.active[0].posix.dumps(1)))
-            print('posix err', str(m.active[0].posix.dumps(2)))
+        try:            
+            print('posix out', str(m.active[0].posix.dumps(1))[:100])
+            print('posix err', str(m.active[0].posix.dumps(2))[:100])
             # for es in m.errored:
             #     print('Errored: ', es.error)
             #     vl.warning('Errored: ' + str(es.error))

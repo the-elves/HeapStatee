@@ -1,5 +1,5 @@
 from HeapModel.mstate import HeapState, SIZE_SZ, Chunk, MALLOC_ALLIGNMENT, MALLOC_ALIGN_MASK
-
+from HeapModel.Vulns import ChunkNotFoundException
 
 def addr_in_heap(addr, heap: HeapState):
     if heap.startAddress <= addr < heap.top.address + heap.top.size:
@@ -25,13 +25,21 @@ def metadata_cloberring(addr, heap: HeapState):
             return True
     return False
 
+def fastbin_chunk(chunk, heap):
+    for b in heap.fastbin:
+        if chunk in b:
+            return True
+    return False
+
 def write_in_free_chunk(addr, heap: HeapState):
     c = chunk_containing_address(addr, heap)
+    if c is None:
+        raise(ChunkNotFoundException("Chunk for address {:x} not found".format(addr)))
     prev_chunk = chunk_containing_address(c.address-c.prev_size, heap)
     if not prev_chunk.free:
         if c.address  <= addr < c.address + SIZE_SZ:
             return False
-    if c.free:
+    if c.free or fastbin_chunk(c, heap):
         return True
 
 def possible_malloc_concretizations(heap: HeapState):
