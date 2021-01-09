@@ -35,13 +35,15 @@ def dump_callstack(state):
     mainobj = state.project.loader.main_object
     for frame in cs:
         name = ''
-        for obj in allobjs:
-            pdb.set_trace()
-            if frame.func_addr not in obj.reverse_plt.keys():
-                continue
-            name = obj.reverse_plt[frame.func_addr]
-            if frame.func_addr in mainobj.reverse_plt.keys():
-                name = mainobj.reverse_plt[frame.func_addr]
-            if name != '':
-                break
+        sym = ldr.find_symbol(frame.func_addr)
+        if sym is None:
+            name = ''
+        else:
+            name = sym.name
+        if name == '':
+            for obj in allobjs:
+                if frame.func_addr in obj.reverse_plt.keys():
+                    name=obj.reverse_plt[frame.func_addr]
+                if name is None:
+                    name = ''
         print(hex(frame.call_site_addr), "=>", hex(frame.func_addr), f"({name})")

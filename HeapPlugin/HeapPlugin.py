@@ -41,7 +41,6 @@ class HeapPlugin(SimStatePlugin):
 class Malloc(SimProcedure):
     i = 0
     def run(self, size):
-        pdb.set_trace()
         s = self.state.solver.eval(size)
         hs = self.state.my_heap.heap_state
         rip = self.state.solver.eval(self.state.regs.rip)
@@ -63,7 +62,6 @@ class Malloc(SimProcedure):
 class Calloc(SimProcedure):
     i = 0
     def run(self, size, num):
-        pdb.set_trace()
         s = self.state.solver.eval(size)
         n = self.state.solver.eval(num)
         hs = self.state.my_heap.heap_state
@@ -86,7 +84,6 @@ class Calloc(SimProcedure):
 class Realloc(SimProcedure):
     i = 0
     def run(self, soldmem, sbytes):
-        pdb.set_trace()
         oldmem = self.state.solver.eval(soldmem)
         nbytes = self.state.solver.eval(sbytes)
         hs = self.state.my_heap.heap_state
@@ -125,7 +122,6 @@ class Realloc(SimProcedure):
 
 class Free(SimProcedure):
     i = 0
-
     def run(self, address):
         ohs = self.state.my_heap.heap_state
         possible_addresses = possible_free_concretizations(ohs)

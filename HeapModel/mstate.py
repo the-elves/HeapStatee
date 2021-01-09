@@ -1,6 +1,9 @@
 import sys
 from HeapModel.Vulns import *
 from HeapModel.Colors import bcolors
+import pdb
+
+
 SIZE_SZ = 8
 align_of_long_double = 8 if SIZE_SZ == 4 else 16
 MALLOC_ALLIGNMENT = align_of_long_double if 2 * SIZE_SZ < align_of_long_double else 2 * SIZE_SZ
@@ -20,6 +23,8 @@ FASTBIN_CONSOLIDATION_THRESHOLD = 65536
 DEBUG = True
 MAX_SMALLBIN_SIZE = ((N_SMALL_BINS - SMALLBIN_CORRECTION) * SMALLBIN_WIDTH)
 NFASTBINS = 10
+SYS_MALLOC_INCREMENT = 0X21000
+
 class Chunk:
     id = 0
     def __init__(self):
@@ -457,6 +462,7 @@ class HeapState:
                 #sysmalloc
                 #TODO handle properly
                 self.top.size = self.top.size + 0x21000
+                pdb.set_trace()
 
 
 

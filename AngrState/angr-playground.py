@@ -186,7 +186,6 @@ while len(m.active) > 0:
                 pdb.set_trace()     
         except Exception as e:
             print("Disassembly not available")
-            print(e)
     if(not stopping_condition()):
         m.step()
         try:            
