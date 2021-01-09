@@ -23,7 +23,7 @@ FASTBIN_CONSOLIDATION_THRESHOLD = 65536
 DEBUG = True
 MAX_SMALLBIN_SIZE = ((N_SMALL_BINS - SMALLBIN_CORRECTION) * SMALLBIN_WIDTH)
 NFASTBINS = 10
-SYS_MALLOC_INCREMENT = 0X21000
+SYSMALLOC_INCREMENT = 0X21000
 
 class Chunk:
     id = 0
@@ -461,7 +461,7 @@ class HeapState:
             else:
                 #sysmalloc
                 #TODO handle properly
-                self.top.size = self.top.size + 0x21000
+                self.top.size = self.top.size + SYSMALLOC_INCREMENT
                 pdb.set_trace()
 
 
@@ -546,6 +546,9 @@ class HeapState:
             if(size > FASTBIN_CONSOLIDATION_THRESHOLD):
                 self.consolidate()
 
+            #XXX Return sysmalloc memory hackily returning memory
+            if self.top.size // SYSMALLOC_INCREMENT >2:
+                self.top.size -= SYSMALLOC_INCREMENT
         #TODO handle unmap_chunk
 
     '''
