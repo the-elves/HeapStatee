@@ -6,6 +6,7 @@ sys.path.append('../')
 from HeapPlugin.HeapPlugin import HeapPlugin, Malloc, Free, Calloc, Realloc, Perror
 from HeapModel.heapquery import *
 import angr
+from angr import SIM_PROCEDURES
 import claripy
 import logging
 from datetime import datetime
@@ -21,6 +22,13 @@ start_time = datetime.now()
 
 l = logging.getLogger('heap_analysis')
 h = HeapPlugin(startingAddress=0x2000000)
+
+TRACKED_ADDRESSES = [0x076cfc9]
+
+def sigquit_handler(signal, frame):
+    for s in m.active:
+        dump_callstack(s)
+        s.my_heap.heap_state.dump()
 
 
 def initialize_logger(bname):
@@ -53,6 +61,7 @@ def initialize_project(b, ss):
 
 
 def handle_heap_write(state):
+    global START_TRACKING_FLAG
     write_address = state.solver.eval(state.inspect.mem_write_address)
     wl = state.solver.eval(state.inspect.mem_write_length)
     l.warning("writting to %x for %d bytes" % (write_address, wl))
@@ -86,9 +95,10 @@ def handle_heap_write(state):
     if(vuln):
         h.heap_state.dump()
         dump_concretized_file(state)
+        START_TRACKING_FLAG = False
 #        pdb.set_trace()
 
-                
+
 
 def bp_action_write(state):
     write_address = state.solver.eval(state.inspect.mem_write_address)
@@ -123,20 +133,45 @@ def print_libs(p):
         print(f'{k} : {v} : {v.binary}')
         
 
-next_stopping_addr = -1
+
 def pdb_stopping_condition():    
-    if m.active[0].solver.eval(m.active[0].regs.rip) == next_stopping_addr or \
+    if next_stopping_addr in m.active[0].block().instruction_addrs or \
        next_stopping_addr == -1:
         return True
     else: return False
+
+def dump_regs(s):
+    e = s.solver.eval
+    for n in [rn for rn in dir(s.regs) if rn[0] == 'r']:
+        reg = getattr(s.regs, n)
+        print(n,':', hex(e(reg)))
+
+        
+def dump_context(s):
+    global START_TRACKING_FLAG
+    print("=============>")
+    s.my_heap.heap_state.dump()
+    print()
+    print("Regs")
+    dump_regs(s)
+    s.block().pp()
+    if s.addr in TRACKED_ADDRESSES:
+        START_TRACKING_FLAG=True
+    if START_TRACKING_FLAG:
+        s.my_heap.tracked_mem[s.addr] = s.mem.copy()
+        s.my_heap.tracked_reg[s.addr] = s.regs.copy()
+    dump_callstack(s)
     
+    
+signal.signal(signal.SIGQUIT, sigquit_handler)
 
 binary_name = sys.argv[2]
 loader_libraries = ['../../tools/glibc-dir/install/lib64/libc-2.27.so',
                                   '/home/ajinkya/Guided_HLM/tools/glibc-dir/install/lib64/ld-2.27.so']
 if 'HEAPSTATE_LIBS' in os.environ.keys():
-    loader_libraries.append(os.environ['HEAPSTATE_LIBS'])
+    loader_libraries.extend(os.environ['HEAPSTATE_LIBS'].split(' '))
 
+print('External Libraries ', loader_libraries)
 b = angr.Project(binary_name, auto_load_libs=True,
                  force_load_libs=loader_libraries
                  )
@@ -177,14 +212,11 @@ while len(m.active) > 0:
     if sys.argv[1] == 'd':
         try:
             for s in m.active:
-                print("=============>", m.active)
-                s.my_heap.heap_state.dump()
-                print()
-                s.block().pp()
-                dump_callstack(s)
+                dump_context(s)
             if pdb_stopping_condition():
                 pdb.set_trace()     
         except Exception as e:
+            print(str(e))
             print("Disassembly not available")
     if(not stopping_condition()):
         m.step()
