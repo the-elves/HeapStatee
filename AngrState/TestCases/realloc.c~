@@ -1,0 +1,9 @@
+#include<stdio.h>
+#include<stdlib.h>
+int main()
+{
+  void *p, *q;
+  p = malloc(50);
+  q = realloc(p, 30);
+  return q;
+}

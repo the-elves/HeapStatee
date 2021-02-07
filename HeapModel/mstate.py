@@ -46,8 +46,8 @@ class Chunk:
               "address = ",str(hex(self.address)), \
               "size = ",str(hex(self.size)), \
               "free = ", self.free, \
-              "prev_size = ", self.prev_size, \
-              "end address = ", self.address+self.size, \
+              "prev_size = ", str(hex(self.prev_size)), \
+              "end address = ", str(hex(self.address+self.size)), \
               "]")
 
 
@@ -462,7 +462,6 @@ class HeapState:
                 #sysmalloc
                 #TODO handle properly
                 self.top.size = self.top.size + SYSMALLOC_INCREMENT
-                pdb.set_trace()
 
 
 
@@ -485,6 +484,7 @@ class HeapState:
             #TODO add checks: "free(): invalid next size (fast)"
             idx = self.get_fast_bin_index(p_chunk.size)
             fb = self.fastbin[idx]
+            p_chunk.free = False
             fb.insert(0, p_chunk)
             p_chunk.bin = fb
             #XXX POSSIBLE ERROR: NEXT AND PREVIOUS NOT UPDATED, INHERENTLY MAINTAINED BY THE LIST
@@ -547,7 +547,7 @@ class HeapState:
                 self.consolidate()
 
             #XXX Return sysmalloc memory hackily returning memory
-            if self.top.size // SYSMALLOC_INCREMENT >2:
+            if (self.top.size // SYSMALLOC_INCREMENT) >2:
                 self.top.size -= SYSMALLOC_INCREMENT
         #TODO handle unmap_chunk
 
@@ -559,30 +559,40 @@ class HeapState:
     def realloc(self, oldp, oldsize, nb):
         old_chunk = self.get_chunk_by_address(oldp)
         assert (old_chunk.size == oldsize)
-        next = self.get_chunk_at_offset(oldp, oldsize)
-        next_address = next.address
+        next_chunk = self.get_chunk_at_offset(oldp, oldsize)
+        next_address = next_chunk.address
         if oldsize >= nb:
             newp = oldp
-            newsize = oldsize
+            rem_size = oldsize - nb
+            if rem_size < MIN_SIZE:
+                pass
+            else:
+                old_chunk.size = nb
+                new_chunk = Chunk()
+                new_chunk.free = False
+                new_chunk.address = old_chunk.address+nb
+                new_chunk.size = rem_size
+                new_chunk.prev_size = nb
+                self.allocated_chunks.append(new_chunk)
+                self.free(new_chunk.address)
+            return newp
+                
+                
         else:
-            newsize = oldsize + next.size
+            newsize = oldsize + next_chunk.size
             if next_address == self.top.address and \
                 newsize >= (nb + MIN_SIZE):
-
                 new_chunk = old_chunk
                 new_chunk.address = oldp
                 new_chunk.size = nb
                 new_chunk.free = False
                 self.top.address = oldp + nb
                 self.top.size = self.top.size - nb
-
                 return new_chunk.address
 
-            elif next.address != self.top.address and \
-                next.free and newsize >= nb:
-
+            elif next_chunk.address != self.top.address and \
+                next_chunk.free and newsize >= nb:
                 newp = oldp
-
                 #next.bin.remove(newp)
             else:
                 newp = self.malloc(nb-MALLOC_ALIGN_MASK)
@@ -603,16 +613,15 @@ class HeapState:
         rem_size = newsize - nb
         if rem_size < MIN_SIZE:
             old_chunk.size = newsize
-            next_chunk = self.get_chunk_by_address(next_address)
         else:
             old_chunk = self.get_chunk_by_address(oldp)
             next_chunk = self.get_chunk_by_address(next_address)
-            if next_chunk.bin is not None:
+            if next_chunk.bin is not None:              
                 next_chunk.bin.remove(next_chunk)
                 next_chunk.bin = None
                 next_chunk.free = False
             old_chunk.size = nb
-            next_chunk.address += nb - oldsize
+            next_chunk.address += (nb - oldsize)
             next_chunk.size = rem_size
             self.allocated_chunks.append(next_chunk)
             self.set_next_size(old_chunk, nb)

@@ -1,0 +1,25 @@
+rip = 76d164 write @ 2003411 is in free chunk 2003400 argv = 10 stdin=b'%8s %19s %9s %6s %*s Where%8.*s' write_address = 2003411
+Backtrace:
+Frame 0: 0x814260 => 0x7696a0, sp = 0x7fffffffffefa98
+Frame 1: 0x815ab0 => 0x814000, sp = 0x7fffffffffefb28
+Frame 2: 0x7c09e3 => 0x815a70, sp = 0x7fffffffffefb58
+Frame 3: 0x7c021f => 0x7c0730, sp = 0x7fffffffffefbe8
+Frame 4: 0x402702 => 0x401c30, sp = 0x7fffffffffefc28
+Frame 5: 0x403007 => 0x4025d4, sp = 0x7fffffffffefe58
+Frame 6: 0x4030d2 => 0x402f3c, sp = 0x7fffffffffefe98
+Frame 7: 0x4034a3 => 0x40304f, sp = 0x7fffffffffefef8
+Frame 8: 0xf01058 => 0x403263, sp = 0x7fffffffffeff28
+Frame 9: 0x401e30 => 0x7219a0, sp = 0x7fffffffffeff38
+Frame 10: 0x0 => 0x0, sp = 0xffffffffffffffff
+rip = 81428a write @ 2003410 is in free chunk 2003400 argv = 10 stdin=b'%8s %19s %9s %6s %*s Where%8.*s' write_address = 2003410
+Backtrace:
+Frame 0: 0x815ab0 => 0x814000, sp = 0x7fffffffffefb28
+Frame 1: 0x7c09e3 => 0x815a70, sp = 0x7fffffffffefb58
+Frame 2: 0x7c021f => 0x7c0730, sp = 0x7fffffffffefbe8
+Frame 3: 0x402702 => 0x401c30, sp = 0x7fffffffffefc28
+Frame 4: 0x403007 => 0x4025d4, sp = 0x7fffffffffefe58
+Frame 5: 0x4030d2 => 0x402f3c, sp = 0x7fffffffffefe98
+Frame 6: 0x4034a3 => 0x40304f, sp = 0x7fffffffffefef8
+Frame 7: 0xf01058 => 0x403263, sp = 0x7fffffffffeff28
+Frame 8: 0x401e30 => 0x7219a0, sp = 0x7fffffffffeff38
+Frame 9: 0x0 => 0x0, sp = 0xffffffffffffffff

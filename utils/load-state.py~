@@ -1,0 +1,13 @@
+import pickle
+import code
+import sys
+dirpath = "/home/ajinkya/Guided_HLM/concretized_files/pickles/"
+filepath = dirpath+sys.argv[1]
+with open(filepath,'rb') as f:
+    s = pickle.load(f)
+
+h = s.my_heap.heap_state
+
+def e(x):
+    return hex(s.solver.eval(s))
+code.interact(local=locals())

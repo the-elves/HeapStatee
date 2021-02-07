@@ -5,15 +5,16 @@ from angr.engines import SimSuccessors
 from HeapModel.mstate import HeapState, SIZE_SZ
 from HeapModel.Vulns import *
 from HeapModel.heapquery import *
-from utils.utils import dump_concretized_file
+from utils.utils import dump_concretized_file, next_stopping_addr
 import claripy
 import logging
 import pdb
+import sys
 
 l = logging.getLogger('heap_analysis')
 vl = logging.getLogger('vuln_logger');
 
-
+MAX_MALLOC_SIZE = 1<<30
 class HeapPlugin(SimStatePlugin):
     # TODO merge and widen
     # def merge(self, _others, _merge_conditions, _common_ancestor=None):
@@ -35,13 +36,16 @@ class HeapPlugin(SimStatePlugin):
     @SimStatePlugin.memo
     def copy(self, memo):
         heap_copy = deepcopy(self.heap_state)
-        return HeapPlugin(h = heap_copy)
+        new_heap_plugin = HeapPlugin(h = heap_copy)
+        return new_heap_plugin
 
 
 class Malloc(SimProcedure):
     i = 0
     def run(self, size):
         s = self.state.solver.eval(size)
+        if s > MAX_MALLOC_SIZE:
+            return 0
         hs = self.state.my_heap.heap_state
         rip = self.state.solver.eval(self.state.regs.rip)
         print(f'rip {rip:x} malloc requested {Malloc.i} with requst_size {s}, allocated size {hs.request2size(s)}, heap state before')
@@ -89,7 +93,7 @@ class Realloc(SimProcedure):
         hs = self.state.my_heap.heap_state
         oldp = oldmem - 2 * SIZE_SZ
         nb = hs.request2size(nbytes)
-        print(f'realloc requested {Realloc.i} with size {nb:x}@{oldp:x} heap state before call: ')
+        print(f'realloc requested {Realloc.i} with requested sieze {nbytes:x}, chunksize{nb:x}@{oldp:x} heap state before call: ')
         hs.dump()
         if nbytes == 0 and oldmem != 0:
             hs.free(oldp)
@@ -146,7 +150,7 @@ class Free(SimProcedure):
                 except Vulnerability as V:
                     print("Error")
                     l.warning(V.msg + " @ " + str(V.addr))
-                    vl.warning('vl warning: ', V.msg + " @ " + str(V.addr))
+                    vl.warning( V.msg + " @ " + str(V.addr))
                     dump_concretized_file(self.state)
 
                 orig_state = self.state

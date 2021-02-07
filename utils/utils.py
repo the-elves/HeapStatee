@@ -1,6 +1,12 @@
 from datetime import datetime
 import pickle
 import pdb
+import code
+import sys
+next_stopping_addr = -1
+special_states=[]
+START_TRACKING_FLAG = False
+
 def dump_concretized_file(state):
     b=state.project
     sym_file_name = '/symfiles/mysymfile'
@@ -18,6 +24,9 @@ def dump_concretized_file(state):
     with open(fname, 'wb') as f:
         f.write(state.posix.dumps(0))
     dump_state(state)
+    if sys.argv[1] == 'ds':
+        next_stopping_addr=-1
+        code.interact(local=locals())
 
 def dump_state(state):
     b=state.project
@@ -29,10 +38,12 @@ def dump_state(state):
 
 
 def dump_callstack(state):
+
     cs = state.callstack
     ldr = state.project.loader
     allobjs = state.project.loader.all_elf_objects
     mainobj = state.project.loader.main_object
+    callstack_string = ""
     for frame in cs:
         name = ''
         sym = ldr.find_symbol(frame.func_addr)
@@ -46,4 +57,11 @@ def dump_callstack(state):
                     name=obj.reverse_plt[frame.func_addr]
                 if name is None:
                     name = ''
-        print(hex(frame.call_site_addr), "=>", hex(frame.func_addr), f"({name})")
+        callstack_string = callstack_string + '\n' + hex(frame.call_site_addr)+ " => " +  hex(frame.func_addr) +  f"({name})"
+
+    return callstack_string
+
+
+
+
+    

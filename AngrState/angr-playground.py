@@ -2,6 +2,8 @@
 # coding: utf-8
 import psutil
 import sys
+print(sys.getrecursionlimit())
+sys.setrecursionlimit(1500)
 sys.path.append('../')
 from HeapPlugin.HeapPlugin import HeapPlugin, Malloc, Free, Calloc, Realloc, Perror
 from HeapModel.heapquery import *
@@ -17,13 +19,12 @@ import os
 from utils.utils import *
 
 HOUR = 60*60
-time_limit = HOUR*2
+time_limit = HOUR*4
 start_time = datetime.now()
 
 l = logging.getLogger('heap_analysis')
-h = HeapPlugin(startingAddress=0x2000000)
 
-TRACKED_ADDRESSES = [0x076cfc9]
+
 
 def sigquit_handler(signal, frame):
     for s in m.active:
@@ -41,9 +42,23 @@ def initialize_logger(bname):
     l.addHandler(logging.FileHandler('../reports/logs/'+bname+'.log', 'w'))
     l.setLevel(logging.DEBUG)
 
-    
 
+def get_heap_starting_address(b):
+    objs = b.loader.all_objects
+    current_max_addr = 0
+    for o in objs:
+        if o.max_addr > current_max_addr:
+            current_max_addr = o.max_addr
+    max_addr_string=str(hex(current_max_addr))
+    msd = str(hex(int(max_addr_string[2], 16)+1))[2:]
+    max_addr_len = len(max_addr_string)-2
+    heap_starting_address = int(msd + '0'*(max_addr_len-1), 16)
+    return heap_starting_address
+
+        
 def initialize_project(b, ss):
+    heap_starting_address = get_heap_starting_address(b)
+    h = HeapPlugin(startingAddress=heap_starting_address)
     ss.register_plugin('my_heap', h)
     print("[+] hooking malloc")
     b.hook_symbol('malloc', Malloc())
@@ -55,13 +70,24 @@ def initialize_project(b, ss):
     b.hook_symbol('realloc', Realloc())
     print("[+] hooking perror")
     b.hook_symbol('perror', Perror())
+
+    print("[+] hooking fopen64")
+    # print(SIM_PROCEDURES)
+    b.hook_symbol('fopen64', SIM_PROCEDURES['libc']['fopen']())
+
+    print("[+] hooking seek")
+    b.hook_symbol('fseeko64', SIM_PROCEDURES['libc']['fseek']())
+
+    print("[+] hooking tell")
+    b.hook_symbol('ftello64', SIM_PROCEDURES['libc']['ftell']())
+    
+    
     ss.inspect.b('mem_write', when=angr.BP_BEFORE, action=bp_action_write)
     initialize_logger(b.filename)
     setup_filesystem(ss)
 
 
 def handle_heap_write(state):
-    global START_TRACKING_FLAG
     write_address = state.solver.eval(state.inspect.mem_write_address)
     wl = state.solver.eval(state.inspect.mem_write_length)
     l.warning("writting to %x for %d bytes" % (write_address, wl))
@@ -81,7 +107,7 @@ def handle_heap_write(state):
                 l.warning('write @ {:x} is in free chunk {:x} argv = {} stdin={}'.format(wa, c.address, conc_argv, conc_stdin))
                 rip = state.solver.eval(state.regs.rip)
                 vl.warning('rip = {:x} write @ {:x} is in free chunk {:x} argv = {} stdin={} write_address = {:x}'.format(rip, wa, c.address, conc_argv, conc_stdin, write_address + wi))
-                vl.warning(str(state.callstack))
+                vl.warning(dump_callstack(state))
                 vuln = True    
             if metadata_cloberring(wa, state.my_heap.heap_state):
                 conc_argv = state.solver.eval(argvinp)
@@ -90,12 +116,12 @@ def handle_heap_write(state):
                 rip = state.solver.eval(state.regs.rip)
                 l.warning('Metadata of heap chunk @ 0x{:x} cloberred argv = {} stdin={} write_address = 0x{:x}'.format(c.address, conc_argv, conc_stdin, write_address+wi))
                 vl.warning('rip = {:x} Metadata of heap chunk @ 0x{:x} cloberred argv = {} stdin={} write_address = 0x{:x}'.format(rip, c.address, conc_argv, conc_stdin, write_address+wi))
-                vl.warning(str(state.callstack))
+                vl.warning(dump_callstack(state))
                 vuln = True
     if(vuln):
+        h = state.my_heap
         h.heap_state.dump()
         dump_concretized_file(state)
-        START_TRACKING_FLAG = False
 #        pdb.set_trace()
 
 
@@ -148,19 +174,13 @@ def dump_regs(s):
 
         
 def dump_context(s):
-    global START_TRACKING_FLAG
     print("=============>")
     s.my_heap.heap_state.dump()
     print()
     print("Regs")
     dump_regs(s)
     s.block().pp()
-    if s.addr in TRACKED_ADDRESSES:
-        START_TRACKING_FLAG=True
-    if START_TRACKING_FLAG:
-        s.my_heap.tracked_mem[s.addr] = s.mem.copy()
-        s.my_heap.tracked_reg[s.addr] = s.regs.copy()
-    dump_callstack(s)
+    print(dump_callstack(s))
     
     
 signal.signal(signal.SIGQUIT, sigquit_handler)
@@ -184,7 +204,11 @@ input_chars = [claripy.BVS(f'flag{i}',8) for i in range(num_sym_bytes)] + [clari
 argvinp = claripy.Concat(*input_chars)
 
 
-estate = b.factory.entry_state(args = sys.argv[2:])
+stdin_bytes_list = [claripy.BVS('byte_%d' % i, 8) for i in range(3200)]
+stdin_bytes_ast = claripy.Concat(*stdin_bytes_list)
+
+
+estate = b.factory.entry_state(args = sys.argv[2:]) #, stdin=angr.SimFile('/dev/stdin', content=stdin_bytes_ast))
 
 # estate = b.factory.entry_state(argc = 2, argv = [binary_name, input_chars])
 # for i in range(num_sym_bytes-1):
@@ -192,6 +216,9 @@ estate = b.factory.entry_state(args = sys.argv[2:])
 #     estate.add_constraints(c!=0)
     
 initialize_project(b, estate)
+
+print("Heap starting at ", hex(estate.my_heap.heap_state.startAddress))
+
 m = b.factory.simulation_manager(estate)
 m.use_technique(DFS())
 # pdb.set_trace()
@@ -241,7 +268,7 @@ if len(m.errored) > 0:
     for es in m.errored:
         print('Errored: ' + str(es.error))
         vl.warning('Errored: ' + str(es.error))
-        print(str(es.state.callstack))
+        print(dump_callstack())
 
     # print('--')
     # print(len(m.active))
