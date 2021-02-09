@@ -87,10 +87,13 @@ def initialize_project(b, ss):
     setup_filesystem(ss)
 
 
+    
 def handle_heap_write(state):
     write_address = state.solver.eval(state.inspect.mem_write_address)
     wl = state.solver.eval(state.inspect.mem_write_length)
-    l.warning("writting to %x for %d bytes" % (write_address, wl))
+    wexpr = state.inspect.mem_write_expr
+    l.warning("writting to %x for %d bytes writing expr" % (write_address, wl))
+    l.warning(bvv_to_string(state, wexpr))
     i = 0
     vuln = False
     for wi in range(wl):
@@ -121,8 +124,9 @@ def handle_heap_write(state):
     if(vuln):
         h = state.my_heap
         h.heap_state.dump()
+        VULN_FLAG=True
+        pdb.set_trace()
         dump_concretized_file(state)
-#        pdb.set_trace()
 
 
 

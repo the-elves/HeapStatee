@@ -1,3 +1,4 @@
+from utils.utils import *
 class Vulnerability(Exception):
     def __init__(self, msg, address):
         self.addr = address

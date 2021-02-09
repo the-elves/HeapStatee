@@ -1,3 +1,4 @@
+
 from copy import deepcopy
 from angr import SimStatePlugin, SimProcedure, SimState
 from angr.calling_conventions import SimCCSystemVAMD64
@@ -5,7 +6,8 @@ from angr.engines import SimSuccessors
 from HeapModel.mstate import HeapState, SIZE_SZ
 from HeapModel.Vulns import *
 from HeapModel.heapquery import *
-from utils.utils import dump_concretized_file, next_stopping_addr
+from utils.utils import dump_concretized_file, next_stopping_addr, debug_dump
+from utils import utils 
 import claripy
 import logging
 import pdb
@@ -15,6 +17,8 @@ l = logging.getLogger('heap_analysis')
 vl = logging.getLogger('vuln_logger');
 
 MAX_MALLOC_SIZE = 1<<30
+
+
 class HeapPlugin(SimStatePlugin):
     # TODO merge and widen
     # def merge(self, _others, _merge_conditions, _common_ancestor=None):
@@ -43,6 +47,8 @@ class HeapPlugin(SimStatePlugin):
 class Malloc(SimProcedure):
     i = 0
     def run(self, size):
+        if(utils.DEBUG):
+            debug_dump(self.state, "== Before Malloc ==")
         s = self.state.solver.eval(size)
         if s > MAX_MALLOC_SIZE:
             return 0
@@ -57,6 +63,8 @@ class Malloc(SimProcedure):
             l.warning(V.msg + " @ " + str(V.addr))
             vl.warning('vl raised warning', V.msg + " @ " + str(V.addr))
             dump_concretized_file(self.state)
+        if(utils.DEBUG):
+            debug_dump(self.state, "== After Malloc ==")
         print(f'rip {rip:x} malloc called {Malloc.i} with requst_size {s}, allocated size {hs.request2size(s)}, allocated at 0x{addr:x}')
         Malloc.i += 1
         # hs.dump()
@@ -66,6 +74,8 @@ class Malloc(SimProcedure):
 class Calloc(SimProcedure):
     i = 0
     def run(self, size, num):
+        if(utils.DEBUG):
+            debug_dump(self.state, "== Before Calloc ==")
         s = self.state.solver.eval(size)
         n = self.state.solver.eval(num)
         hs = self.state.my_heap.heap_state
@@ -80,6 +90,8 @@ class Calloc(SimProcedure):
             vl.warning('vlraised warning', V.msg + " @ " + str(V.addr))
             dump_concretized_file(self.state)
         print(f'rip {rip:x} calloc called {Calloc.i} with size {hs.request2size(s)}, allocated at 0x{addr:x}')
+        if(utils.DEBUG):
+            debug_dump(self.state, "== After Calloc ==")
         Malloc.i += 1
         #hs.dump()
         return addr + 2*SIZE_SZ
@@ -88,36 +100,41 @@ class Calloc(SimProcedure):
 class Realloc(SimProcedure):
     i = 0
     def run(self, soldmem, sbytes):
+        if(utils.DEBUG):
+            debug_dump(self.state, "== Before Realloc ==")
         oldmem = self.state.solver.eval(soldmem)
         nbytes = self.state.solver.eval(sbytes)
         hs = self.state.my_heap.heap_state
         oldp = oldmem - 2 * SIZE_SZ
         nb = hs.request2size(nbytes)
-        print(f'realloc requested {Realloc.i} with requested sieze {nbytes:x}, chunksize{nb:x}@{oldp:x} heap state before call: ')
-        hs.dump()
+        print(f'realloc requested {Realloc.i} with requested size:0x{nbytes:x}, chunksize:0x{nb:x}@0x{oldmem:x} heap state before call: ')
         if nbytes == 0 and oldmem != 0:
             hs.free(oldp)
         if oldmem == 0:
             new_chunk_ptr = hs.malloc(nbytes)
             new_chunk_ptr += 2*SIZE_SZ
+            if(utils.DEBUG):
+                debug_dump(self.state, "== AFter Realloc ==")
             return new_chunk_ptr
         old_chunk = hs.get_chunk_by_address(oldp)
         if old_chunk is None:
             vl.warning(f'Freeing Non existent chunk in realloc requested {Realloc.i} with size {nb:x}@{oldp:x} ')
             dump_concretized_file(self.state)
+            newp = -2*SIZE_SZ #setting to zero before returning
         else:
             old_size = old_chunk.size
-
-        old_chunk_ptr = oldmem-2*SIZE_SZ
-        # TODO mmapped chunk logic
-        # todo if single thread (check)
-        try:
-            newp = hs.realloc(oldp, old_size, nb)
-        except Vulnerability as V:
-            print(V.msg, V.addr)
-            l.warning(V.msg + " @ " + str(V.addr))
-            vl.warning('vlraised warning', V.msg + " @ " + str(V.addr))
-            dump_concretized_file(self.state)
+            old_chunk_ptr = oldmem-2*SIZE_SZ
+            # TODO mmapped chunk logic
+            # todo if single thread (check)
+            try:
+                newp = hs.realloc(oldp, old_size, nb)
+            except Vulnerability as V:
+                print(V.msg, V.addr)
+                l.warning(V.msg + " @ " + str(V.addr))
+                vl.warning('vlraised warning', V.msg + " @ " + str(V.addr))
+                dump_concretized_file(self.state)
+        if(utils.DEBUG):
+            debug_dump(self.state, "== AFter Realloc ==")
         newp += 2*SIZE_SZ
         Realloc.i+=1
         return newp
@@ -144,7 +161,9 @@ class Free(SimProcedure):
                     continue
                 add = add - 2 * SIZE_SZ
                 print(address)
-                print(f'free called {Free.i}, address {add}')
+                print(f'free called {Free.i}, address 0x{add:x}')
+                if(utils.DEBUG):
+                    debug_dump(state_copy, "== Before Free ==")
                 try:
                     hs.free(add)
                 except Vulnerability as V:
@@ -152,7 +171,8 @@ class Free(SimProcedure):
                     l.warning(V.msg + " @ " + str(V.addr))
                     vl.warning( V.msg + " @ " + str(V.addr))
                     dump_concretized_file(self.state)
-
+                if(utils.DEBUG):
+                    debug_dump(state_copy, "== After Free ==")
                 orig_state = self.state
                 self.state = state_copy
                 self.ret()

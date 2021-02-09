@@ -6,6 +6,20 @@ import sys
 next_stopping_addr = -1
 special_states=[]
 START_TRACKING_FLAG = False
+DEBUG=True
+VULN_FLAG = False
+
+
+def bvv_to_string(state, bvv):
+    
+    try:
+        chops = bvv.chop(8)
+    except:
+        print(bvv)
+        print("cannot chop into 8")
+        return ''
+    string = ''.join([chr(state.solver.eval(chop)) for chop in chops])
+    return '**' + string + '**'
 
 def dump_concretized_file(state):
     b=state.project
@@ -17,17 +31,31 @@ def dump_concretized_file(state):
     time = today.strftime('%d-%m-%H-%M')
     print("concretizing file", sym_file_name)
     fname = '../../concretized-files/' + b.filename.split('/')[-1] + '-exp-'+time
-    with open(fname, 'wb') as f:
-        f.write(sf.concretize())
-    fname = '../../concretized-files/stdins/' + b.filename.split('/')[-1] + '-exp-'+time
-    print("Concretizing stdin")
-    with open(fname, 'wb') as f:
-        f.write(state.posix.dumps(0))
-    dump_state(state)
-    if sys.argv[1] == 'ds':
-        next_stopping_addr=-1
-        code.interact(local=locals())
+    file_contents = sf.concretize()
+    if all([x == 0 for x in file_contents]):
+        print('All zeros in concretized files, skipping')
+    else:
+        with open(fname, 'wb') as f:
+            f.write(file_contents)
+        fname = '../../concretized-files/stdins/' + b.filename.split('/')[-1] + '-exp-'+time
+        print("Concretizing stdin")
+        with open(fname, 'wb') as f:
+            f.write(state.posix.dumps(0))
+        dump_state(state)
+        if sys.argv[1] == 'ds':
+            next_stopping_addr=-1
+            code.interact(local=locals())
 
+def debug_dump(state, message):
+    print(message)
+    print(dump_callstack(state))
+    heap_state = state.my_heap.heap_state
+    heap_state.dump()
+    if VULN_FLAG:
+        pdb.set_trace()
+
+
+        
 def dump_state(state):
     b=state.project
     today = datetime.now()
@@ -38,7 +66,6 @@ def dump_state(state):
 
 
 def dump_callstack(state):
-
     cs = state.callstack
     ldr = state.project.loader
     allobjs = state.project.loader.all_elf_objects
