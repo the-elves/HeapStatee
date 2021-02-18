@@ -19,7 +19,7 @@ import os
 from utils.utils import *
 
 HOUR = 60*60
-time_limit = HOUR*4
+time_limit = HOUR*40
 start_time = datetime.now()
 
 l = logging.getLogger('heap_analysis')
@@ -142,7 +142,7 @@ def setup_filesystem(estate):
     estate.fs.mount('/exploits/',host_file_system)
     
     symfilename = 'mysymfile'
-    symfile = angr.SimFile(symfilename, size=5*1024)
+    symfile = angr.SimFile(symfilename, size=200*1024)
     symfile.set_state(estate)
     estate.fs.insert('/symfiles/mysymfile', symfile)
 

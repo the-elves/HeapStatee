@@ -108,6 +108,7 @@ class Realloc(SimProcedure):
         oldp = oldmem - 2 * SIZE_SZ
         nb = hs.request2size(nbytes)
         print(f'realloc requested {Realloc.i} with requested size:0x{nbytes:x}, chunksize:0x{nb:x}@0x{oldmem:x} heap state before call: ')
+        # Handle corner cases
         if nbytes == 0 and oldmem != 0:
             hs.free(oldp)
         if oldmem == 0:
@@ -116,9 +117,12 @@ class Realloc(SimProcedure):
             if(utils.DEBUG):
                 debug_dump(self.state, "== AFter Realloc ==")
             return new_chunk_ptr
+        # By now normal case
+        
         old_chunk = hs.get_chunk_by_address(oldp)
         if old_chunk is None:
             vl.warning(f'Freeing Non existent chunk in realloc requested {Realloc.i} with size {nb:x}@{oldp:x} ')
+            pdb.set_trace()
             dump_concretized_file(self.state)
             newp = -2*SIZE_SZ #setting to zero before returning
         else:
