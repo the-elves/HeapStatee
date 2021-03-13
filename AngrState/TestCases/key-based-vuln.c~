@@ -6,10 +6,15 @@ int main(int argc, char *argv[])
   FILE *fp = fopen(fn, "r");
   char *v = (char *)malloc(32);
   char p;
-  int i;
-  while((p = fgetc(fp)) == 'P'){
+  int i=0;
+  int sum = 0;
+  while((p = fgetc(fp)) != EOF){
     printf("%c", p);
-    v[i++] = p;
+    sum = sum+p;
+    if(sum == 64){
+      v[i++] = p;
+      sum=0;
+    }
   }
   free(v);
 }

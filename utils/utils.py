@@ -10,6 +10,25 @@ DEBUG=True
 VULN_FLAG = False
 
 
+def constrained_concretize_file(state, constraints):
+    b=state.project
+    today = datetime.now()
+    time = today.strftime('%d-%m-%H-%M')
+    sym_file_name = '/symfiles/mysymfile'
+    fname = '../../concretized-files/' + b.filename.split('/')[-1] + '-constrined-exp-'+time
+    sf = state.fs.get(sym_file_name)
+    ec = []
+    
+    for addr,value in constraints.items():
+        mem = state.mem[addr].byte.resolved
+        ec.append( mem == value)
+    file_contents = sf.concretize(extra_constraints=ec)
+    if all([x == 0 for x in file_contents]):
+        print('All zeros in concretized files, skipping')
+    else:
+        with open(fname, 'wb') as f:
+            f.write(file_contents)
+
 def bvv_to_string(state, bvv):
     
     try:
@@ -67,28 +86,29 @@ def dump_state(state):
 
 def dump_callstack(state):
     cs = state.callstack
-    ldr = state.project.loader
-    allobjs = state.project.loader.all_elf_objects
-    mainobj = state.project.loader.main_object
+
     callstack_string = ""
     for frame in cs:
-        name = ''
-        sym = ldr.find_symbol(frame.func_addr)
-        if sym is None:
-            name = ''
-        else:
-            name = sym.name
-        if name == '':
-            for obj in allobjs:
-                if frame.func_addr in obj.reverse_plt.keys():
-                    name=obj.reverse_plt[frame.func_addr]
-                if name is None:
-                    name = ''
+        name = get_function_name(state, frame.func_addr)
         callstack_string = callstack_string + '\n' + hex(frame.call_site_addr)+ " => " +  hex(frame.func_addr) +  f"({name})"
-
     return callstack_string
 
 
-
-
+def get_function_name(state, address):
+    ldr = state.project.loader
+    allobjs = state.project.loader.all_elf_objects
+    mainobj = state.project.loader.main_object
+    name = ''
+    sym = ldr.find_symbol(address)    
+    if sym is None:
+        name = ''
+    else:
+        name = sym.name
+    if name == '':
+        for obj in allobjs:
+            if address in obj.reverse_plt.keys():
+                name=obj.reverse_plt[address]
+            if name is None:
+                name = ''    
+    return name
     

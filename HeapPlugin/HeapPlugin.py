@@ -73,6 +73,7 @@ class Malloc(SimProcedure):
 
 class Calloc(SimProcedure):
     i = 0
+    
     def run(self, size, num):
         if(utils.DEBUG):
             debug_dump(self.state, "== Before Calloc ==")
@@ -80,10 +81,11 @@ class Calloc(SimProcedure):
         n = self.state.solver.eval(num)
         hs = self.state.my_heap.heap_state
         rip = self.state.solver.eval(self.state.regs.rip)
-        print(f'rip {rip:x} calloc requested {Calloc.i} with size {hs.request2size(s)} heap state before call: ')
+        print(f'rip {rip:x} calloc requested {Calloc.i} {n} objects with with size {hs.request2size(s)} heap state before call: ')
         # hs.dump()
         try:
             addr = hs.malloc(n*s)
+            self.memset_zero(addr, n*s)
         except Vulnerability as V:
             print(V.msg, V.addr)
             l.warning(V.msg + " @ " + str(V.addr))
@@ -96,6 +98,14 @@ class Calloc(SimProcedure):
         #hs.dump()
         return addr + 2*SIZE_SZ
 
+    def memset_zero(self, addr, size):
+        s = self.state
+        hs = s.my_heap.heap_state
+        chunk_size = hs.request2size(size)-2*SIZE_SZ
+        addr = addr + 2*SIZE_SZ
+        for l in range(addr, addr + chunk_size):
+            s.mem[l].uint8_t = 0
+    
 
 class Realloc(SimProcedure):
     i = 0
@@ -108,7 +118,7 @@ class Realloc(SimProcedure):
         oldp = oldmem - 2 * SIZE_SZ
         nb = hs.request2size(nbytes)
         print(f'realloc requested {Realloc.i} with requested size:0x{nbytes:x}, chunksize:0x{nb:x}@0x{oldmem:x} heap state before call: ')
-        # Handle corner cases
+        # Handle corner cases (free and simple malloc)
         if nbytes == 0 and oldmem != 0:
             hs.free(oldp)
         if oldmem == 0:
@@ -139,11 +149,19 @@ class Realloc(SimProcedure):
                 dump_concretized_file(self.state)
         if(utils.DEBUG):
             debug_dump(self.state, "== AFter Realloc ==")
+        self.copy_data(old_chunk, newp)
         newp += 2*SIZE_SZ
         Realloc.i+=1
         return newp
         #todo multi threaded logic
 
+    def copy_data(self, old_chunk, new_chunkp):
+        old_addr = old_chunk.address + 2*SIZE_SZ
+        write_size = old_chunk.size -2*SIZE_SZ
+        new_addr = new_chunkp + 2*SIZE_SZ
+        if (old_chunk.addr+old_chunk.size) != (new_chunk_p):
+            for idx in range(write_size):
+                self.state.mem[new_addr + idx] = self.state.mem[old_addr + idx] 
 
 class Free(SimProcedure):
     i = 0
@@ -171,6 +189,7 @@ class Free(SimProcedure):
                 try:
                     hs.free(add)
                 except Vulnerability as V:
+                    pdb.set_trace()
                     print("Error")
                     l.warning(V.msg + " @ " + str(V.addr))
                     vl.warning( V.msg + " @ " + str(V.addr))

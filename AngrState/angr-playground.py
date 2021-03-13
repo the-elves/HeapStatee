@@ -125,6 +125,13 @@ def handle_heap_write(state):
         h = state.my_heap
         h.heap_state.dump()
         VULN_FLAG=True
+#        temp-----------
+#        cons = {}
+#        for addr in range(0x2000030, 0x2000031):
+#            cons[addr] = addr - 0x2000030
+#        constrained_concretize_file(state, cons)
+#        ------------
+#
         pdb.set_trace()
         dump_concretized_file(state)
 
@@ -240,6 +247,7 @@ while len(m.active) > 0:
     timestr = now.strftime("%H:%M:%S")
     addr = m.active[0].solver.eval(m.active[0].regs.ip)
     print(timestr, 'active states = ', len(m.active), 'rip = ', hex(addr))
+    print('stashes ', m.active, m.deferred)
     if sys.argv[1] == 'd':
         try:
             for s in m.active:
@@ -272,7 +280,7 @@ if len(m.errored) > 0:
     for es in m.errored:
         print('Errored: ' + str(es.error))
         vl.warning('Errored: ' + str(es.error))
-        print(dump_callstack())
+        print(dump_callstack(es.state))
 
     # print('--')
     # print(len(m.active))
