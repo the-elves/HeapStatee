@@ -61,6 +61,7 @@ def initialize_project(b, ss):
     h = HeapPlugin(startingAddress=heap_starting_address)
     ss.register_plugin('my_heap', h)
     print("[+] hooking malloc")
+#    angr.SIM_PROCEDURES['libc']['malloc'] = Malloc
     b.hook_symbol('malloc', Malloc())
     print("[+] hooking calloc")
     b.hook_symbol('calloc', Calloc())
