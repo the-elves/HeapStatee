@@ -1,9 +1,8 @@
-
 from copy import deepcopy
 from angr import SimStatePlugin, SimProcedure, SimState
 from angr.calling_conventions import SimCCSystemVAMD64
 from angr.engines import SimSuccessors
-from HeapModel.mstate import HeapState, SIZE_SZ
+from HeapModel.mstate import HeapState, SIZE_SZ, MIN_SIZE
 from HeapModel.Vulns import *
 from HeapModel.heapquery import *
 from utils.utils import dump_concretized_file, next_stopping_addr, debug_dump
@@ -149,19 +148,20 @@ class Realloc(SimProcedure):
                 dump_concretized_file(self.state)
         if(utils.DEBUG):
             debug_dump(self.state, "== AFter Realloc ==")
+            
         self.copy_data(old_chunk, newp)
         newp += 2*SIZE_SZ
         Realloc.i+=1
         return newp
         #todo multi threaded logic
 
-    def copy_data(self, old_chunk, new_chunkp):
+    def copy_data(self, old_chunk: Chunk, new_chunkp):
         old_addr = old_chunk.address + 2*SIZE_SZ
         write_size = old_chunk.size -2*SIZE_SZ
         new_addr = new_chunkp + 2*SIZE_SZ
-        if (old_chunk.addr+old_chunk.size) != (new_chunk_p):
+        if (old_chunk.address+old_chunk.size) != (new_chunkp):
             for idx in range(write_size):
-                self.state.mem[new_addr + idx] = self.state.mem[old_addr + idx] 
+                self.state.mem[new_addr + idx].uint8_t = self.state.mem[old_addr + idx].uint8_t.resolved
 
 class Free(SimProcedure):
     i = 0
@@ -204,6 +204,81 @@ class Free(SimProcedure):
 
 
 
+
+class Posix_Memalign(SimProcedure):
+    def run(self, sppmem, salignment, ssize):
+        state = self.state
+        alignment = state.solver.eval(salignment)
+        size = state.solver.eval(ssize)
+        ppmem = state.solver.eval(sppmem)
+        pmem = state.solver.eval(state.mem[ppmem].uintptr_t.resolved)
+        hs = state.my_heap.heap_state
+        nb = hs.request2size(size)
+        
+        print(f'rip memalign requested size 0x{size:x} with allignemnt 0x{alignment:x} heap state before call: ')
+        if utils.DEBUG:
+            debug_dump(state, "==Before memalign==")
+        if alignment <= MALLOC_ALLIGNMENT:
+            m = hs.malloc(size)+2*SIZE_SZ
+            state.mem[pmem].uintptr_t = m
+            return 0
+        if alignment <= MIN_SIZE:
+            alignment = MIN_SIZE
+
+        alignment = self.powerof2(alignment)
+
+        # TODO : Missing a check for >size max
+        p = hs.malloc(nb+alignment+MIN_SIZE)
+        m = p + 2*SIZE_SZ
+        pchunk = hs.get_chunk_by_address(p)
+        if m % alignment != 0:
+            brk = (p+alignment -1) & (-alignment)
+            if (brk - p) <= MIN_SIZE:
+                brk += alignment
+            lead_size = brk - p
+            new_size = pchunk.size - lead_size
+            pchunk.address = brk
+            pchunk.size = new_size
+            orig_prevsize = pchunk.prev_size
+            pchunk.prev_size = lead_size
+            
+            new_chunk = Chunk()
+            new_chunk.address = p
+            new_chunk.size = lead_size
+            new_chunk.free = False
+            new_chunk.prev_size = orig_prevsize
+            hs.allocated_chunks.append(new_chunk)
+            hs.free(p)
+            p=brk
+        
+            
+        pchunk = hs.get_chunk_by_address(p)
+        if size > (nb+MIN_SIZE):
+            remainder_size = pchunk.size - nb
+            remainder_address = p + nb
+            new_chunk = Chunk()
+            new_chunk.address = remainder_address
+            new_chunk.size = remainder_size
+            new_chunk.prev_size = pchunk.size
+            new_chunk.free = False
+            hs.allocated_chunks.append(new_chunk)
+            hs.free(remainder_address)
+            
+        m = p+2*SIZE_SZ
+        state.mem[pmem].uint64_t = m
+        print(state.mem[pmem])
+        if utils.DEBUG:
+            debug_dump(state, "==After memalign==")
+        return 0
+            
+        
+        
+    def powerof2(self, alignment):
+        a= 1
+        while alignment > a:
+            a = a<<1
+        return a
+    
 class Perror(SimProcedure):
     def run(self):
         self.exit(1)

@@ -5,7 +5,7 @@ import sys
 print(sys.getrecursionlimit())
 sys.setrecursionlimit(1500)
 sys.path.append('../')
-from HeapPlugin.HeapPlugin import HeapPlugin, Malloc, Free, Calloc, Realloc, Perror
+from HeapPlugin.HeapPlugin import HeapPlugin, Malloc, Free, Calloc, Realloc, Perror, Posix_Memalign
 from HeapModel.heapquery import *
 import angr
 from angr import SIM_PROCEDURES
@@ -19,8 +19,13 @@ import os
 from utils.utils import *
 
 HOUR = 60*60
-time_limit = HOUR*40
+time_limit = HOUR*10
 start_time = datetime.now()
+
+if sys.argv[1][1] == 's':
+    nsa=-1
+else:
+    nsa=1
 
 l = logging.getLogger('heap_analysis')
 
@@ -55,25 +60,42 @@ def get_heap_starting_address(b):
     heap_starting_address = int(msd + '0'*(max_addr_len-1), 16)
     return heap_starting_address
 
-        
+def hook_unlocked_functions(b):
+    funcs ="getc, getchar, putc, putchar, feof, fflush, fgetc, fputc, fread, fwrite, fgets, fputs".split(", ")
+    for f in funcs:
+        b.hook_symbol(f+"_unlocked", SIM_PROCEDURES['libc'][f]())
+
+def hook_iso_prefixed_functions(b):
+    funcs ="sscanf, sprintf".split(", ")
+    for f in funcs:
+        b.hook_symbol("__isoc99_"+f, SIM_PROCEDURES['libc'][f]())
+
+def modify_sim_procedures():
+    angr.SIM_PROCEDURES['libc']['malloc'] = Malloc
+    angr.SIM_PROCEDURES['libc']['calloc'] = Calloc
+    angr.SIM_PROCEDURES['libc']['free'] = Free
+    angr.SIM_PROCEDURES['libc']['realloc'] = Realloc
+    angr.SIM_PROCEDURES['libc']['posix_memalign'] = Posix_Memalign
+
+    
 def initialize_project(b, ss):
     heap_starting_address = get_heap_starting_address(b)
     h = HeapPlugin(startingAddress=heap_starting_address)
     ss.register_plugin('my_heap', h)
     print("[+] hooking malloc")
-#    angr.SIM_PROCEDURES['libc']['malloc'] = Malloc
     b.hook_symbol('malloc', Malloc())
     print("[+] hooking calloc")
-    b.hook_symbol('calloc', Calloc())
+    b.hook_symbol("calloc", Calloc())
     print("[+] hooking free")
-    b.hook_symbol('free', Free())
-    print("[+] hooking reallloc")
+    b.hook_symbol("free", Free())
+    print("[+] hooking realloc")
     b.hook_symbol('realloc', Realloc())
+    print("[+] hooking memalign")
+    b.hook_symbol('posix_memalign', Posix_Memalign())
     print("[+] hooking perror")
     b.hook_symbol('perror', Perror())
-
     print("[+] hooking fopen64")
-    # print(SIM_PROCEDURES)
+    
     b.hook_symbol('fopen64', SIM_PROCEDURES['libc']['fopen']())
 
     print("[+] hooking seek")
@@ -82,6 +104,11 @@ def initialize_project(b, ss):
     print("[+] hooking tell")
     b.hook_symbol('ftello64', SIM_PROCEDURES['libc']['ftell']())
     
+    print("[+] hooking _unlocked functions")
+    hook_unlocked_functions(b)
+
+    print("[+] hooking __isoc99_ functions")
+    hook_iso_prefixed_functions(b)
     
     ss.inspect.b('mem_write', when=angr.BP_BEFORE, action=bp_action_write)
     initialize_logger(b.filename)
@@ -147,12 +174,15 @@ def bp_action_write(state):
 def setup_filesystem(estate):
     host_file_system = angr.SimHostFilesystem('/home/ajinkya/Guided_HLM/guest_chroot/')
     host_file_system.set_state(estate)
-    estate.fs.mount('/exploits/',host_file_system)
+    estate.fs.mount('/',host_file_system)
     
     symfilename = 'mysymfile'
     symfile = angr.SimFile(symfilename, size=200*1024)
     symfile.set_state(estate)
-    estate.fs.insert('/symfiles/mysymfile', symfile)
+    if 'SYMFILE_NAME' in os.environ.keys():
+        estate.fs.insert(os.environ['SYMFILE_NAME'], symfile)
+    else:
+        estate.fs.insert('/symfiles/mysymfile', symfile)
 
     
 def alarm_handler(signum, frame):
@@ -172,9 +202,10 @@ def print_libs(p):
         
 
 
-def pdb_stopping_condition():    
-    if next_stopping_addr in m.active[0].block().instruction_addrs or \
-       next_stopping_addr == -1:
+def pdb_stopping_condition():
+    global nsa
+    if nsa in m.active[0].block().instruction_addrs or \
+       nsa == -1:
         return True
     else: return False
 
@@ -200,10 +231,13 @@ signal.signal(signal.SIGQUIT, sigquit_handler)
 binary_name = sys.argv[2]
 loader_libraries = ['../../tools/glibc-dir/install/lib64/libc-2.27.so',
                                   '/home/ajinkya/Guided_HLM/tools/glibc-dir/install/lib64/ld-2.27.so']
+
+# sim_procedure_blacklist = ['fopen', 'fclose']
 if 'HEAPSTATE_LIBS' in os.environ.keys():
     loader_libraries.extend(os.environ['HEAPSTATE_LIBS'].split(' '))
 
 print('External Libraries ', loader_libraries)
+modify_sim_procedures()
 b = angr.Project(binary_name, auto_load_libs=True,
                  force_load_libs=loader_libraries
                  )
@@ -249,7 +283,7 @@ while len(m.active) > 0:
     addr = m.active[0].solver.eval(m.active[0].regs.ip)
     print(timestr, 'active states = ', len(m.active), 'rip = ', hex(addr))
     print('stashes ', m.active, m.deferred)
-    if sys.argv[1] == 'd':
+    if sys.argv[1][0] == 'd':
         try:
             for s in m.active:
                 dump_context(s)
@@ -279,6 +313,7 @@ for s in m.deadended:
 if len(m.errored) > 0:
     print("============== Errored States ======================")
     for es in m.errored:
+        print(sys.argv)
         print('Errored: ' + str(es.error))
         vl.warning('Errored: ' + str(es.error))
         print(dump_callstack(es.state))

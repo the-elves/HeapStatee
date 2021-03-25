@@ -127,3 +127,139 @@ Tests/Test.py,0
 MemTraceGenerator/UserAPI/verify_trace.py,0
 
 utils/__init__.py,0
+
+HeapPlugin/HeapPlugin.py,402
+class HeapPlugin(22,550
+    def __init__(27,701
+    def set_heap(34,909
+    def print_heap(37,965
+    def copy(41,1048
+class Malloc(47,1205
+    def run(49,1243
+class Calloc(74,2315
+    def run(77,2358
+    def memset_zero(101,3395
+class Realloc(110,3664
+    def run(112,3703
+    def copy_data(159,5646
+class Free(167,6017
+    def run(169,6053
+class Perror(208,7604
+    def run(209,7632
+
+utils/getline_procedure.py,38
+class getline(3,13
+    def run(7,90
+
+utils/utils.py,208
+def constrained_concretize_file(13,179
+def bvv_to_string(32,871
+def dump_concretized_file(43,1133
+def debug_dump(68,2060
+def dump_state(78,2261
+def dump_callstack(87,2528
+def get_function_name(97,2841
+
+HeapModel/Vulns.py,139
+class Vulnerability(4,38
+    def __init__(5,70
+class DoubleFreeVuln(9,160
+    def __init__(10,197
+class ChunkNotFoundException(14,310
+
+HeapModel/heapquery.py,239
+def addr_in_heap(4,145
+def chunk_containing_address(9,277
+def metadata_cloberring(17,568
+def fastbin_chunk(28,959
+def write_in_free_chunk(34,1083
+def possible_malloc_concretizations(45,1520
+def possible_free_concretizations(65,2322
+
+HeapModel/mstate.py,1043
+class Chunk:Chunk28,857
+    def __init__(30,881
+    def dump_chunk(44,1230
+class HeapState:HeapState54,1564
+    def __init__(55,1581
+    def get_chunk_at_offset(75,2246
+    def get_chunk_by_address(79,2370
+    def get_fast_bin_index(103,3102
+    def allocate_from_fastbin(106,3198
+    def smallbin_index(118,3518
+    def largebin_index(125,3717
+    def allocate_from_smallbin(141,4186
+    def rebin_unsorted_chunks(156,4557
+    def try_last_remainder(159,4608
+    def consolidate(162,4656
+    def allocate_from_largebin(216,7084
+    def allocate_from_unsorted(219,7136
+    def request2size(222,7188
+    def size2request(232,7536
+    def set_next_size(241,7782
+    def malloc(246,7968
+    def free(468,17164
+    def realloc(559,21322
+    def dump_chunk(638,24186
+    def print_bin(651,24793
+    def dump_parsed(655,24897
+    def print_fastbins(675,25533
+    def print_smallbins(684,25773
+    def print_unsortedbin(692,26008
+    def check_distance(696,26104
+    def check_range(706,26510
+    def dump(718,26987
+
+HeapModel/Colors.py,27
+class bcolors:bcolors1,0
+
+MemTraceGenerator/UserAPI/parse-gdb-output.py,265
+def skip_lines(9,219
+def contains(18,385
+def find_pos_after(25,500
+def parse_chunk(29,564
+def parse_chunks(50,1417
+def parse_fastbins(61,1709
+def parse_smallbins(85,2330
+def parse_unsortedbins(106,3034
+def parse_largebins(127,3730
+def parse_line(132,3769
+
+MemTraceGenerator/UserAPI/dummy_trace_generator.py,25
+def create_command(6,58
+
+Tests/user_functions.py,140
+class User_Info:User_Info3,12
+    def __init__(6,63
+    def update_heap(15,290
+    def create_user(18,340
+    def delete_user(61,2268
+
+Tests/BFS.py,58
+class tree_node:tree_node9,102
+    def __init__(10,119
+
+AngrState/angr-playground.py,468
+def sigquit_handler(30,583
+def initialize_logger(36,706
+def get_heap_starting_address(47,1039
+def hook_unlocked_functions(59,1474
+def modify_sim_procedures(64,1704
+def initialize_project(70,1940
+def handle_heap_write(103,2991
+def bp_action_write(152,5330
+def setup_filesystem(158,5526
+def alarm_handler(169,5904
+def stopping_condition(173,5959
+def print_libs(180,6155
+def pdb_stopping_condition(186,6274
+def dump_regs(193,6438
+def dump_context(200,6612
+
+Tests/RandomTest.py,0
+
+Tests/Test.py,0
+
+MemTraceGenerator/UserAPI/verify_trace.py,0
+
+utils/__init__.py,0

@@ -2,8 +2,9 @@
 #include<stdlib.h>
 int main()
 {
-  void *p, *q;
+  void *p, *q, *r;
   p = malloc(0x40);
-  q = realloc(p, 0x20);
+  r = malloc(20);
+  q = realloc(p, 0x60);
   return q;
 }
