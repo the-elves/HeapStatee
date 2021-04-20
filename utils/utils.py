@@ -4,7 +4,7 @@ import pdb
 import code
 import sys
 
-checkpoint_address = 0x8f752c
+# checkpoint_address = 0x8f752c
 next_stopping_addr = -1
 START_TRACKING_FLAG = False
 DEBUG=True
