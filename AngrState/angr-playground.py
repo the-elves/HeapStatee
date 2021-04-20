@@ -19,8 +19,12 @@ import os
 from utils.utils import *
 
 HOUR = 60*60
-time_limit = HOUR*10
+time_limit = HOUR*24
 start_time = datetime.now()
+start = False
+current_deferred_count = 0
+
+
 
 if sys.argv[1][1] == 's':
     nsa=-1
@@ -29,9 +33,11 @@ else:
 
 l = logging.getLogger('heap_analysis')
 
+#logging.getLogger('angr').setLevel('DEBUG')
 
 
 def sigquit_handler(signal, frame):
+    pdb.set_trace()
     for s in m.active:
         dump_callstack(s)
         s.my_heap.heap_state.dump()
@@ -66,7 +72,8 @@ def hook_unlocked_functions(b):
         b.hook_symbol(f+"_unlocked", SIM_PROCEDURES['libc'][f]())
 
 def hook_iso_prefixed_functions(b):
-    funcs ="sscanf, sprintf".split(", ")
+#    funcs ="sscanf, sprintf".split(", ")
+    funcs ="sprintf".split(", ")    
     for f in funcs:
         b.hook_symbol("__isoc99_"+f, SIM_PROCEDURES['libc'][f]())
 
@@ -77,11 +84,8 @@ def modify_sim_procedures():
     angr.SIM_PROCEDURES['libc']['realloc'] = Realloc
     angr.SIM_PROCEDURES['libc']['posix_memalign'] = Posix_Memalign
 
-    
-def initialize_project(b, ss):
-    heap_starting_address = get_heap_starting_address(b)
-    h = HeapPlugin(startingAddress=heap_starting_address)
-    ss.register_plugin('my_heap', h)
+
+def hook_simprocs(b, ss):
     print("[+] hooking malloc")
     b.hook_symbol('malloc', Malloc())
     print("[+] hooking calloc")
@@ -94,8 +98,9 @@ def initialize_project(b, ss):
     b.hook_symbol('posix_memalign', Posix_Memalign())
     print("[+] hooking perror")
     b.hook_symbol('perror', Perror())
-    print("[+] hooking fopen64")
+
     
+    print("[+] hooking fopen64")
     b.hook_symbol('fopen64', SIM_PROCEDURES['libc']['fopen']())
 
     print("[+] hooking seek")
@@ -109,6 +114,22 @@ def initialize_project(b, ss):
 
     print("[+] hooking __isoc99_ functions")
     hook_iso_prefixed_functions(b)
+
+    print("[+] hooking open64")
+    b.hook_symbol('open64', SIM_PROCEDURES['posix']['open']())
+
+    print("[+] hooking fstat64")
+    b.hook_symbol('fstat64', SIM_PROCEDURES['linux_kernel']['fstat64']())
+
+    print("[+] hooking fstat")
+    b.hook_symbol('fstat', SIM_PROCEDURES['linux_kernel']['fstat']())
+    
+def initialize_project(b, ss):
+    heap_starting_address = get_heap_starting_address(b)
+    h = HeapPlugin(startingAddress=heap_starting_address)
+    ss.register_plugin('my_heap', h)
+
+    hook_simprocs(b, ss)
     
     ss.inspect.b('mem_write', when=angr.BP_BEFORE, action=bp_action_write)
     initialize_logger(b.filename)
@@ -167,6 +188,10 @@ def handle_heap_write(state):
 
 def bp_action_write(state):
     write_address = state.solver.eval(state.inspect.mem_write_address)
+    write_length = state.solver.eval(state.inspect.mem_write_length)
+    # if write_address <= 0x1f07b20 and 0x1f07b20 <= write_address + write_length: 
+    #     print("writing to got")
+    #     pdb.set_trace()
     if addr_in_heap(write_address, state.my_heap.heap_state):
         handle_heap_write(state)
 
@@ -174,7 +199,7 @@ def bp_action_write(state):
 def setup_filesystem(estate):
     host_file_system = angr.SimHostFilesystem('/home/ajinkya/Guided_HLM/guest_chroot/')
     host_file_system.set_state(estate)
-    estate.fs.mount('/',host_file_system)
+    estate.fs.mount('/exploits',host_file_system)
     
     symfilename = 'mysymfile'
     symfile = angr.SimFile(symfilename, size=200*1024)
@@ -204,9 +229,18 @@ def print_libs(p):
 
 def pdb_stopping_condition():
     global nsa
-    if nsa in m.active[0].block().instruction_addrs or \
-       nsa == -1:
+    global m
+    global current_deferred_count 
+    current_addresses = m.active[0].block().instruction_addrs
+    if checkpoint_address in current_addresses and sys.argv[2] != 'l':
+        print("creating checkpoint ", hex(m.active[0].addr))
+        dump_checkpoint(m, str(hex(m.active[0].addr))+".ckp")
+    if nsa in current_addresses  or \
+       nsa == -1: 
         return True
+    # elif len(m.deferred) > current_deferred_count:
+    #     print("Stopping reason: deferred state added")
+    #     current_deferred_count+=1
     else: return False
 
 def dump_regs(s):
@@ -239,7 +273,8 @@ if 'HEAPSTATE_LIBS' in os.environ.keys():
 print('External Libraries ', loader_libraries)
 modify_sim_procedures()
 b = angr.Project(binary_name, auto_load_libs=True,
-                 force_load_libs=loader_libraries
+                 force_load_libs=loader_libraries,
+                 exclude_sim_procedures_list=['__isoc99_sscanf']
                  )
 
 print_libs(b)
@@ -256,7 +291,7 @@ stdin_bytes_ast = claripy.Concat(*stdin_bytes_list)
 
 estate = b.factory.entry_state(args = sys.argv[2:]) #, stdin=angr.SimFile('/dev/stdin', content=stdin_bytes_ast))
 
-# estate = b.factory.entry_state(argc = 2, argv = [binary_name, input_chars])
+#estate = b.factory.entry_state(argc = 2, argv = [binary_name, input_chars])
 # for i in range(num_sym_bytes-1):
 #     c=argvinp.chop(8)[i]
 #     estate.add_constraints(c!=0)
@@ -265,8 +300,16 @@ initialize_project(b, estate)
 
 print("Heap starting at ", hex(estate.my_heap.heap_state.startAddress))
 
-m = b.factory.simulation_manager(estate)
+if sys.argv[1][2] == 'l':
+    cp_name = '0x4eca00.ckp'
+    print("loading checkpoint ", cp_name)
+    stashes = load_checkpoint(cp_name)
+    m = b.factory.simulation_manager([],stashes=stashes)
+else:
+    m = b.factory.simulation_manager(estate)
 m.use_technique(DFS())
+
+
 # pdb.set_trace()
 progress=0
 
@@ -282,7 +325,8 @@ while len(m.active) > 0:
     timestr = now.strftime("%H:%M:%S")
     addr = m.active[0].solver.eval(m.active[0].regs.ip)
     print(timestr, 'active states = ', len(m.active), 'rip = ', hex(addr))
-    print('stashes ', m.active, m.deferred)
+    print('no active stashes ', len(m.active), "no. deferred ", len(m.deferred))
+    #print('stashes ', m.active)    
     if sys.argv[1][0] == 'd':
         try:
             for s in m.active:
@@ -292,6 +336,7 @@ while len(m.active) > 0:
         except Exception as e:
             print(str(e))
             print("Disassembly not available")
+#            pdb.set_trace()
     if(not stopping_condition()):
         m.step()
         try:            
