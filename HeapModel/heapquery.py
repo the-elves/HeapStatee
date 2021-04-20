@@ -1,5 +1,28 @@
 from HeapModel.mstate import HeapState, SIZE_SZ, Chunk, MALLOC_ALLIGNMENT, MALLOC_ALIGN_MASK
 from HeapModel.Vulns import ChunkNotFoundException
+import pdb
+
+def is_consistent(h:HeapState):
+    current_chunk = h.get_chunk_by_address(h.startAddress)
+    allchunks = h.get_all_chunks()
+    prev_size = 0
+    # for c in allchunks:
+    #     print('from consistent')
+    #     c.dump_chunk()
+    #     if c.address == 0x7001a90:
+    #         pdb.set_trace()
+    #         break
+    while(current_chunk is not None):
+        if current_chunk not in allchunks:
+            return False
+        if current_chunk.prev_size != prev_size:
+            return False
+        allchunks.remove(current_chunk)
+        prev_size = current_chunk.size
+        current_chunk = h.get_chunk_by_address(current_chunk.address+current_chunk.size)
+    if len(allchunks) > 0:
+        return False
+    return True
 
 def addr_in_heap(addr, heap: HeapState):
     if heap.startAddress <= addr < heap.top.address + heap.top.size:

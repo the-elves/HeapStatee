@@ -3,8 +3,9 @@ import pickle
 import pdb
 import code
 import sys
+
+checkpoint_address = 0x8f752c
 next_stopping_addr = -1
-special_states=[]
 START_TRACKING_FLAG = False
 DEBUG=True
 VULN_FLAG = False
@@ -75,14 +76,36 @@ def debug_dump(state, message):
 
 
         
-def dump_state(state):
+def dump_state(state, state_name=None):
     b=state.project
     today = datetime.now()
     time = today.strftime('%d-%m-%H-%M')
-    fname = '../../concretized-files/pickles/' + b.filename.split('/')[-1] + '-state-'+time
+    fname = '../../concretized-files/pickles/'
+    if state_name is not None:
+        fname=fname + state_name
+    else:
+        fname += b.filename.split('/')[-1] + '-state-'+time
+
     with open(fname,'wb') as f:
         pickle.dump(state, f)
 
+def load_state(state_name):
+    with open(state_name, 'rb') as f:
+        state = pickle.load(f)
+    return state
+
+def dump_checkpoint(m, cp_name=None):
+    if cp_name is None:
+        cp_name = str(hex(m.active[0].addr))+'.ckp'
+    with open(cp_name, 'wb') as f:
+        pickle.dump(m.stashes, f)
+
+
+def load_checkpoint(cp_name):
+    with open(cp_name, 'rb') as f:
+        stashes = pickle.load(f)
+    return stashes
+        
 
 def dump_callstack(state):
     cs = state.callstack

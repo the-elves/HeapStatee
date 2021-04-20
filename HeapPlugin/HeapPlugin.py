@@ -36,6 +36,15 @@ class HeapPlugin(SimStatePlugin):
     def print_heap(self):
         self.heap_state.dump()
 
+    def __get_state__(self):
+        return self.heap_state
+
+
+    def __set_state(self, stored_heap):
+        self.heap_state = stored_heap
+        
+        
+
     @SimStatePlugin.memo
     def copy(self, memo):
         heap_copy = deepcopy(self.heap_state)
@@ -57,6 +66,9 @@ class Malloc(SimProcedure):
         # hs.dump()
         try:
             addr = hs.malloc(s)
+            if(not is_consistent(hs)):
+                print("heap state inconsistent")
+                pdb.set_trace()
         except Vulnerability as V:
             print(V.msg, V.addr)
             l.warning(V.msg + " @ " + str(V.addr))
@@ -68,6 +80,7 @@ class Malloc(SimProcedure):
         Malloc.i += 1
         # hs.dump()
         print(self.state.callstack)
+        
         return addr + 2*SIZE_SZ
 
 class Calloc(SimProcedure):
@@ -85,6 +98,9 @@ class Calloc(SimProcedure):
         try:
             addr = hs.malloc(n*s)
             self.memset_zero(addr, n*s)
+            if(not is_consistent(hs)):
+                print("heap state inconsistent")
+                pdb.set_trace()
         except Vulnerability as V:
             print(V.msg, V.addr)
             l.warning(V.msg + " @ " + str(V.addr))
@@ -100,9 +116,9 @@ class Calloc(SimProcedure):
     def memset_zero(self, addr, size):
         s = self.state
         hs = s.my_heap.heap_state
-        chunk_size = hs.request2size(size)-2*SIZE_SZ
-        addr = addr + 2*SIZE_SZ
-        for l in range(addr, addr + chunk_size):
+        write_start = addr+2*SIZE_SZ
+        write_size = hs.request2size(size)-SIZE_SZ
+        for l in range(write_start, write_start + write_size):
             s.mem[l].uint8_t = 0
     
 
@@ -120,11 +136,20 @@ class Realloc(SimProcedure):
         # Handle corner cases (free and simple malloc)
         if nbytes == 0 and oldmem != 0:
             hs.free(oldp)
+            if(utils.DEBUG):
+                debug_dump(self.state, "== AFter Realloc ==")
+            if(not is_consistent(hs)):
+                print("heap state inconsistent")
+                pdb.set_trace()
+            return 0
         if oldmem == 0:
             new_chunk_ptr = hs.malloc(nbytes)
             new_chunk_ptr += 2*SIZE_SZ
             if(utils.DEBUG):
                 debug_dump(self.state, "== AFter Realloc ==")
+            if(not is_consistent(hs)):
+                print("heap state inconsistent")
+                pdb.set_trace()
             return new_chunk_ptr
         # By now normal case
         
@@ -136,28 +161,37 @@ class Realloc(SimProcedure):
             newp = -2*SIZE_SZ #setting to zero before returning
         else:
             old_size = old_chunk.size
-            old_chunk_ptr = oldmem-2*SIZE_SZ
             # TODO mmapped chunk logic
             # todo if single thread (check)
             try:
                 newp = hs.realloc(oldp, old_size, nb)
+                if(not is_consistent(hs)):
+                    print("heap state inconsistent")
+                    pdb.set_trace()
             except Vulnerability as V:
                 print(V.msg, V.addr)
                 l.warning(V.msg + " @ " + str(V.addr))
                 vl.warning('vlraised warning', V.msg + " @ " + str(V.addr))
                 dump_concretized_file(self.state)
+                if utils.DEBUG:
+                    print("Vulnerability raised in realloc")
+                    pdb.set_trace()
         if(utils.DEBUG):
             debug_dump(self.state, "== AFter Realloc ==")
             
-        self.copy_data(old_chunk, newp)
+        if old_chunk.address != newp:
+            self.copy_data(old_chunk, newp)
         newp += 2*SIZE_SZ
         Realloc.i+=1
+        if(not is_consistent(hs)):
+            print("heap state inconsistent")
+            pdb.set_trace()
         return newp
         #todo multi threaded logic
 
     def copy_data(self, old_chunk: Chunk, new_chunkp):
         old_addr = old_chunk.address + 2*SIZE_SZ
-        write_size = old_chunk.size -2*SIZE_SZ
+        write_size = old_chunk.size - SIZE_SZ
         new_addr = new_chunkp + 2*SIZE_SZ
         if (old_chunk.address+old_chunk.size) != (new_chunkp):
             for idx in range(write_size):
@@ -170,6 +204,8 @@ class Free(SimProcedure):
         possible_addresses = possible_free_concretizations(ohs)
         # print(f'Possible addresses = {possible_addresses}')
         self.state: SimState
+        if self.state.solver.symbolic(address):
+            pdb.set_trace()
         for pa in possible_addresses:
             sat = self.state.solver.satisfiable(extra_constraints=[address == pa])
             add = pa
@@ -188,6 +224,9 @@ class Free(SimProcedure):
                     debug_dump(state_copy, "== Before Free ==")
                 try:
                     hs.free(add)
+                    if(not is_consistent(hs)):
+                        print("heap state inconsistent")
+                        pdb.set_trace()
                 except Vulnerability as V:
                     pdb.set_trace()
                     print("Error")
@@ -220,7 +259,10 @@ class Posix_Memalign(SimProcedure):
             debug_dump(state, "==Before memalign==")
         if alignment <= MALLOC_ALLIGNMENT:
             m = hs.malloc(size)+2*SIZE_SZ
-            state.mem[pmem].uintptr_t = m
+            state.mem[ppmem].uintptr_t = m
+            if(not is_consistent(hs)):
+                print("heap state inconsistent")
+                pdb.set_trace()
             return 0
         if alignment <= MIN_SIZE:
             alignment = MIN_SIZE
@@ -229,6 +271,9 @@ class Posix_Memalign(SimProcedure):
 
         # TODO : Missing a check for >size max
         p = hs.malloc(nb+alignment+MIN_SIZE)
+        if(not is_consistent(hs)):
+            print("heap state inconsistent")
+            pdb.set_trace()
         m = p + 2*SIZE_SZ
         pchunk = hs.get_chunk_by_address(p)
         if m % alignment != 0:
@@ -263,12 +308,16 @@ class Posix_Memalign(SimProcedure):
             new_chunk.free = False
             hs.allocated_chunks.append(new_chunk)
             hs.free(remainder_address)
-            
+        
         m = p+2*SIZE_SZ
-        state.mem[pmem].uint64_t = m
+        state.mem[ppmem].uint64_t = m
+        print(f"mem align returning address {m:x}")
         print(state.mem[pmem])
         if utils.DEBUG:
             debug_dump(state, "==After memalign==")
+        if(not is_consistent(hs)):
+            print("heap state inconsistent")
+            pdb.set_trace()
         return 0
             
         

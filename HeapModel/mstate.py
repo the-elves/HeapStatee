@@ -99,6 +99,25 @@ class HeapState:
             return self.top
         return None
 
+
+    def get_all_chunks(self):
+        allchunks = []
+        for bin in self.fastbin:
+            for ch in bin:
+                allchunks.append(ch)
+        for bin in self.smallbin:
+            for ch in bin:
+                allchunks.append(ch)
+        for bin in self.largebin:
+            for ch in bin:
+                allchunks.append(ch)
+        for ch in self.unsortedbin:
+            allchunks.append(ch)
+        for ch in self.allocated_chunks:
+            allchunks.append(ch)
+        allchunks.append(self.top)
+        return allchunks
+        
     #fast bin helper routines
     def get_fast_bin_index(self, size):
         return ((size>>(4 if SIZE_SZ == 8 else 3)) -2)
@@ -206,7 +225,7 @@ class HeapState:
                     new_chunk.free = True
                     new_chunk.prev_size = new_prev_size
                     new_chunk.bin = self.unsortedbin
-                    self.set_next_size(new_chunk, new_chunk.size)
+                    self.set_next_prev_size(new_chunk, new_chunk.size)
                     self.unsortedbin.insert(0, new_chunk)
 
 
@@ -238,7 +257,7 @@ class HeapState:
 
 
 
-    def set_next_size(self, ch, sz):
+    def set_next_prev_size(self, ch, sz):
         next_chunk = self.get_chunk_at_offset(ch.address, ch.size)
         next_chunk.prev_size = sz
 
@@ -275,7 +294,7 @@ class HeapState:
                     remainder.size = remainder_size
                     remainder.address = victim.address + nb
                     remainder.prev_size = nb
-                    self.set_next_size(remainder, remainder.size)
+                    self.set_next_prev_size(remainder, remainder.size)
                     self.unsortedbin.remove(self.unsortedbin[-1])
                     remainder.bin=self.unsortedbin
                     self.unsortedbin.insert(0, remainder)
@@ -360,7 +379,7 @@ class HeapState:
                         new_chunk.free = True
                         new_chunk.prev_size = nb
                         new_chunk.bin =self.unsortedbin
-                        self.set_next_size(new_chunk, new_chunk.size)
+                        self.set_next_prev_size(new_chunk, new_chunk.size)
                         self.unsortedbin.insert(0,new_chunk)
                         self.lastremainder = new_chunk
                     ch.free = False
@@ -389,7 +408,7 @@ class HeapState:
                         new_chunk.free = True
                         new_chunk.prev_size = nb
                         new_chunk.bin = self.unsortedbin
-                        self.set_next_size(new_chunk, new_chunk.size)
+                        self.set_next_prev_size(new_chunk, new_chunk.size)
                         self.unsortedbin.insert(0, new_chunk)
                         self.lastremainder = new_chunk
                     victim.free = False
@@ -425,7 +444,7 @@ class HeapState:
                         new_chunk.free = True
                         new_chunk.prev_size = nb
                         new_chunk.bin = self.unsortedbin
-                        self.set_next_size(new_chunk, new_chunk.size)
+                        self.set_next_prev_size(new_chunk, new_chunk.size)
                         self.unsortedbin.insert(0,new_chunk)
                         self.lastremainder = new_chunk
                     victim.free = False
@@ -505,6 +524,7 @@ class HeapState:
                 # instead of checking current chunks prev_inuse and we are checking if the chunk is present in free lists
                 if prev_chunk == None:
                     print ("prev_chunk is none in free")
+                    pdb.set_trace()
                     sys.exit("prev_chunk is none in free")
                 if prev_chunk.free:
                     prev_chunk_bin = prev_chunk.bin
@@ -535,7 +555,7 @@ class HeapState:
                 new_chunk.bin = self.unsortedbin
                 new_chunk.is_mmapped = False
                 new_chunk.prev_size = new_prev_size
-                self.set_next_size(new_chunk, new_chunk.size)
+                self.set_next_prev_size(new_chunk, new_chunk.size)
                 self.unsortedbin.insert(0, new_chunk)
             else:
                 size = size + nextsize
@@ -554,7 +574,7 @@ class HeapState:
     '''
         oldp = pointer to old chunk
         oldsize = actual chunksize pointed by oldp
-        nb = new required chunksize
+        nb = new required chunksize 
     '''
     def realloc(self, oldp, oldsize, nb):
         old_chunk = self.get_chunk_by_address(oldp)
@@ -573,6 +593,8 @@ class HeapState:
                 new_chunk.address = old_chunk.address+nb
                 new_chunk.size = rem_size
                 new_chunk.prev_size = nb
+                self.set_next_prev_size(new_chunk, rem_size)
+#                self.get_chhunk_at_offset(new_chunk.address, new_chunk.size).prev_size = rem_size
                 self.allocated_chunks.append(new_chunk)
                 self.free(new_chunk.address)
             return newp
@@ -583,11 +605,11 @@ class HeapState:
             if next_address == self.top.address and \
                 newsize >= (nb + MIN_SIZE):
                 new_chunk = old_chunk
-                new_chunk.address = oldp
                 new_chunk.size = nb
                 new_chunk.free = False
                 self.top.address = oldp + nb
                 self.top.size = self.top.size - nb
+                self.top.prev_size = nb
                 return new_chunk.address
 
             elif next_chunk.address != self.top.address and \
@@ -620,12 +642,12 @@ class HeapState:
                 next_chunk.bin.remove(next_chunk)
                 next_chunk.bin = None
                 next_chunk.free = False
+                self.allocated_chunks.append(next_chunk)                
             old_chunk.size = nb
             next_chunk.address += (nb - oldsize)
             next_chunk.size = rem_size
-            self.allocated_chunks.append(next_chunk)
-            self.set_next_size(old_chunk, nb)
-            self.set_next_size(next_chunk, rem_size)
+            self.set_next_prev_size(old_chunk, nb)
+            self.set_next_prev_size(next_chunk, rem_size)
             self.free(next_chunk.address)
         return newp
 
@@ -689,6 +711,16 @@ class HeapState:
             for c in bin:
                 c.dump_chunk()
 
+    def print_largebins(self):
+        for bin in self.largebin:
+            if len(bin) == 0:
+                continue
+            print("bin ", self.largebin.index(bin),"->")
+            for c in bin:
+                c.dump_chunk()                
+
+    
+
     def print_unsortedbin(self):
         for c in self.unsortedbin:
             c.dump_chunk()
@@ -720,6 +752,8 @@ class HeapState:
         self.print_fastbins()
         print ("\n[+]"+bcolors.BLUE+" printing smallbins")
         self.print_smallbins()
+        print ("\n[+]"+bcolors.GREEN+" printing large bins")
+        self.print_largebins()
         print ("\n[+]"+bcolors.PINK+bcolors.BOLD+" Printing unsorted bins")
         self.print_unsortedbin()
         print ("\n[+] printing top chunk")
