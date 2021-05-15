@@ -17,6 +17,10 @@ import pdb
 from angr.exploration_techniques import DFS
 import os
 from utils.utils import *
+from utils.fcntl import *
+from angr import sim_options as o
+from HeapModel.Colors import bcolors as c
+
 
 HOUR = 60*60
 time_limit = HOUR*24
@@ -33,7 +37,7 @@ else:
 
 l = logging.getLogger('heap_analysis')
 
-#logging.getLogger('angr').setLevel('DEBUG')
+logging.getLogger('angr').setLevel('INFO')
 
 
 def sigquit_handler(signal, frame):
@@ -123,6 +127,10 @@ def hook_simprocs(b, ss):
 
     print("[+] hooking fstat")
     b.hook_symbol('fstat', SIM_PROCEDURES['linux_kernel']['fstat']())
+
+    '''Experimental be careful might need to remove'''
+    print("[+] hooking fcntl")
+    b.hook_symbol('fcntl', Fcntl())
     
 def initialize_project(b, ss):
     heap_starting_address = get_heap_starting_address(b)
@@ -132,43 +140,68 @@ def initialize_project(b, ss):
     hook_simprocs(b, ss)
     
     ss.inspect.b('mem_write', when=angr.BP_BEFORE, action=bp_action_write)
+    ss.inspect.b('mem_read', when=angr.BP_BEFORE, action=bp_action_read)
     initialize_logger(b.filename)
     setup_filesystem(ss)
 
 
-    
+def handle_heap_read(state):
+    read_start_address = state.solver.eval(state.inspect.mem_read_address)
+    rl = normalize_size(state, state.inspect.mem_read_expr, state.inspect.mem_read_length)
+    # l.warning("reading from %x for %d bytes reading expr"%(read_start_address, rl))
+    vuln=False
+    for i in range(rl):
+        ra = read_start_address + i
+        c = chunk_containing_address(ra, state.my_heap.heap_state)
+        if c is None:
+            # l.warning('Read address outside chunk @0x{:x} Possible USE AFTER FREE'.format(ra))
+            vuln=True
+        else:
+            if access_in_free_chunk(ra, state.my_heap.heap_state):
+                rip = state.solver.eval(state.regs.rip)
+                l.warning('read @ {:x} is in free chunk {:x} USE AFTER FREE '.format(ra, c.address))
+                # vl.warning('rip = {:x} read @ {:x} is in free chunk {:x}  write_address = {:x}'.format(rip, ra, c.address, ra))
+                # vl.warning(dump_callstack(state))
+                vuln = True
+    if(vuln):
+        h = state.my_heap
+        h.heap_state.dump()
+        VULN_FLAG=True
+        pdb.set_trace()
+        dump_concretized_file(state)
+        
 def handle_heap_write(state):
     write_address = state.solver.eval(state.inspect.mem_write_address)
-    wl = state.solver.eval(state.inspect.mem_write_length)
+    wl = normalize_size(state, state.inspect.mem_write_expr, state.inspect.mem_write_length)
     wexpr = state.inspect.mem_write_expr
-    l.warning("writting to %x for %d bytes writing expr" % (write_address, wl))
-    l.warning(bvv_to_string(state, wexpr))
+    # l.warning("writting to %x for %d bytes writing expr" % (write_address, wl))
+    # l.warning(bvv_to_string(state, wexpr))
     i = 0
     vuln = False
     for wi in range(wl):
         wa = write_address + wi
         c = chunk_containing_address(wa, state.my_heap.heap_state)
         if c is None:
-            l.warning('Writing outside chunks @ 0x{:x}'.format(write_address))
+            # l.warning('Writing outside chunks @ 0x{:x}'.format(wa))
             vuln=True
         else:
-            if write_in_free_chunk(wa, state.my_heap.heap_state):
+            if access_in_free_chunk(wa, state.my_heap.heap_state):
                 conc_argv = state.solver.eval(argvinp)
                 conc_stdin = state.posix.dumps(1)
                 state.block().pp();
-                l.warning('write @ {:x} is in free chunk {:x} argv = {} stdin={}'.format(wa, c.address, conc_argv, conc_stdin))
+                # l.warning('write @ {:x} is in free chunk {:x} argv = {} stdin={}'.format(wa, c.address, conc_argv, conc_stdin))
                 rip = state.solver.eval(state.regs.rip)
-                vl.warning('rip = {:x} write @ {:x} is in free chunk {:x} argv = {} stdin={} write_address = {:x}'.format(rip, wa, c.address, conc_argv, conc_stdin, write_address + wi))
-                vl.warning(dump_callstack(state))
+                # vl.warning('rip = {:x} write @ {:x} is in free chunk {:x} argv = {} stdin={} write_address = {:x}'.format(rip, wa, c.address, conc_argv, conc_stdin, write_address + wi))
+                # vl.warning(dump_callstack(state))
                 vuln = True    
             if metadata_cloberring(wa, state.my_heap.heap_state):
                 conc_argv = state.solver.eval(argvinp)
                 conc_stdin = state.posix.dumps(1)
                 state.block().pp();
                 rip = state.solver.eval(state.regs.rip)
-                l.warning('Metadata of heap chunk @ 0x{:x} cloberred argv = {} stdin={} write_address = 0x{:x}'.format(c.address, conc_argv, conc_stdin, write_address+wi))
-                vl.warning('rip = {:x} Metadata of heap chunk @ 0x{:x} cloberred argv = {} stdin={} write_address = 0x{:x}'.format(rip, c.address, conc_argv, conc_stdin, write_address+wi))
-                vl.warning(dump_callstack(state))
+                # l.warning('Metadata of heap chunk @ 0x{:x} cloberred argv = {} stdin={} write_address = 0x{:x}'.format(c.address, conc_argv, conc_stdin, write_address+wi))
+                # vl.warning('rip = {:x} Metadata of heap chunk @ 0x{:x} cloberred argv = {} stdin={} write_address = 0x{:x}'.format(rip, c.address, conc_argv, conc_stdin, write_address+wi))
+                # vl.warning(dump_callstack(state))
                 vuln = True
     if(vuln):
         h = state.my_heap
@@ -188,12 +221,21 @@ def handle_heap_write(state):
 
 def bp_action_write(state):
     write_address = state.solver.eval(state.inspect.mem_write_address)
-    write_length = state.solver.eval(state.inspect.mem_write_length)
+    write_length = normalize_size(state, state.inspect.mem_write_expr, state.inspect.mem_write_length)
     # if write_address <= 0x1f07b20 and 0x1f07b20 <= write_address + write_length: 
     #     print("writing to got")
     #     pdb.set_trace()
     if addr_in_heap(write_address, state.my_heap.heap_state):
         handle_heap_write(state)
+
+def bp_action_read(state):
+    read_address = state.solver.eval(state.inspect.mem_read_address)
+    read_length = normalize_size(state, state.inspect.mem_read_expr, state.inspect.mem_read_length)
+    # if write_address <= 0x1f07b20 and 0x1f07b20 <= write_address + write_length: 
+    #     print("writing to got")
+    #     pdb.set_trace()
+    if addr_in_heap(read_address, state.my_heap.heap_state):
+        handle_heap_read(state)
 
 
 def setup_filesystem(estate):
@@ -206,8 +248,8 @@ def setup_filesystem(estate):
     symfile.set_state(estate)
     if 'SYMFILE_NAME' in os.environ.keys():
         estate.fs.insert(os.environ['SYMFILE_NAME'], symfile)
-    else:
-        estate.fs.insert('/symfiles/mysymfile', symfile)
+    # else:
+    #     estate.fs.insert('/symfiles/mysymfile', symfile)
 
     
 def alarm_handler(signum, frame):
@@ -230,7 +272,7 @@ def print_libs(p):
 def pdb_stopping_condition():
     global nsa
     global m
-    global current_deferred_count 
+    global current_deferred_count
     current_addresses = m.active[0].block().instruction_addrs
     if checkpoint_address in current_addresses and sys.argv[2] != 'l':
         print("creating checkpoint ", hex(m.active[0].addr))
@@ -262,6 +304,7 @@ def dump_context(s):
     
 signal.signal(signal.SIGQUIT, sigquit_handler)
 
+parsePlaylistCount = 0
 binary_name = sys.argv[2]
 loader_libraries = ['../../tools/glibc-dir/install/lib64/libc-2.27.so',
                                   '/home/ajinkya/Guided_HLM/tools/glibc-dir/install/lib64/ld-2.27.so']
@@ -274,7 +317,7 @@ print('External Libraries ', loader_libraries)
 modify_sim_procedures()
 b = angr.Project(binary_name, auto_load_libs=True,
                  force_load_libs=loader_libraries,
-                 exclude_sim_procedures_list=['__isoc99_sscanf']
+                 exclude_sim_procedures_list =  ["__isoc99_sscanf"]
                  )
 
 print_libs(b)
@@ -288,8 +331,9 @@ argvinp = claripy.Concat(*input_chars)
 stdin_bytes_list = [claripy.BVS('byte_%d' % i, 8) for i in range(3200)]
 stdin_bytes_ast = claripy.Concat(*stdin_bytes_list)
 
-
-estate = b.factory.entry_state(args = sys.argv[2:]) #, stdin=angr.SimFile('/dev/stdin', content=stdin_bytes_ast))
+add_options = [o.USE_SYSTEM_TIMES, o.MEMORY_CHUNK_INDIVIDUAL_READS]
+remove_options = [o.ALL_FILES_EXIST]
+estate = b.factory.entry_state(args = sys.argv[2:], add_options=add_options, remove_options=remove_options) #, stdin=angr.SimFile('/dev/stdin', content=stdin_bytes_ast))
 
 #estate = b.factory.entry_state(argc = 2, argv = [binary_name, input_chars])
 # for i in range(num_sym_bytes-1):
@@ -333,21 +377,35 @@ while len(m.active) > 0:
                 dump_context(s)
             if pdb_stopping_condition():
                 pdb.set_trace()     
-        except Exception as e:
+        except angr.SimEngineError as e:
             print(str(e))
             print("Disassembly not available")
-#            pdb.set_trace()
+            
     if(not stopping_condition()):
-        m.step()
-        try:            
-            print('posix out', str(m.active[0].posix.dumps(1))[:100])
-            print('posix err', str(m.active[0].posix.dumps(2))[:100])
+        try:
+            if 0x08f6490 in m.active[0].block().instruction_addrs:
+                parsePlaylistCount+=1
+        except angr.SimEngineError as e:
+            print("Disassembly not available")
+        try:
+            m.step()
+            if len(m.active) > 0:
+                print(c.ENDC, 'posix out', str(m.active[0].posix.dumps(1))[:100], c.ENDC)
+                print(c.ENDC, 'posix err', str(m.active[0].posix.dumps(2))[:100], c.ENDC)
+            print('parsePlaylistCount', parsePlaylistCount)
             # for es in m.errored:
             #     print('Errored: ', es.error)
             #     vl.warning('Errored: ' + str(es.error))
             pass        
-        except:
+        except angr.SimEngineError as e:
+            if "No bytes" not in str(e):
+                pdb.set_trace()
+#        except:
             print('\nno output error')
+            print(str(e))
+        except Exception as e:
+            raise(e)
+
     else:
         print('System memory too low, exiting')
         break
@@ -360,7 +418,7 @@ if len(m.errored) > 0:
     for es in m.errored:
         print(sys.argv)
         print('Errored: ' + str(es.error))
-        vl.warning('Errored: ' + str(es.error))
+        # vl.warning('Errored: ' + str(es.error))
         print(dump_callstack(es.state))
 
     # print('--')

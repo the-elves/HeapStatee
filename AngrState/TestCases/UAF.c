@@ -10,13 +10,14 @@ struct user
 int main(int argc, char *argv[])
 {
   struct user *p = (struct user*)malloc(sizeof(struct user));
+  int result;
   p->authenticated = 0;
   printf("(from program)First malloc: %p\n", p);
   printf("(from program)freeing %p\n", p);
   free(p);
-  printf("(from program)causing write after free\n");
-  p->authenticated = 1;
-  printf("(from program)causing write after free%d\n", p->authenticated);
+  result = p->authenticated;
+  printf("(from program)using after free %d\n", result);
+
   /* p->authenticated=1; */
 
 }

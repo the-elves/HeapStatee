@@ -5,7 +5,7 @@ from angr.engines import SimSuccessors
 from HeapModel.mstate import HeapState, SIZE_SZ, MIN_SIZE
 from HeapModel.Vulns import *
 from HeapModel.heapquery import *
-from utils.utils import dump_concretized_file, next_stopping_addr, debug_dump
+from utils.utils import dump_concretized_file, nsa, debug_dump
 from utils import utils 
 import claripy
 import logging
@@ -132,7 +132,7 @@ class Realloc(SimProcedure):
         hs = self.state.my_heap.heap_state
         oldp = oldmem - 2 * SIZE_SZ
         nb = hs.request2size(nbytes)
-        print(f'realloc requested {Realloc.i} with requested size:0x{nbytes:x}, chunksize:0x{nb:x}@0x{oldmem:x} heap state before call: ')
+        print(f'realloc requested {Realloc.i} with requested size:0x{nbytes:x}, requested chunksize:0x{nb:x}@0x{oldmem:x}(current chunk) heap state before call: ')
         # Handle corner cases (free and simple malloc)
         if nbytes == 0 and oldmem != 0:
             hs.free(oldp)
@@ -195,7 +195,7 @@ class Realloc(SimProcedure):
         new_addr = new_chunkp + 2*SIZE_SZ
         if (old_chunk.address+old_chunk.size) != (new_chunkp):
             for idx in range(write_size):
-                self.state.mem[new_addr + idx].uint8_t = self.state.mem[old_addr + idx].uint8_t.resolved
+                self.state.mem[new_addr + idx].uint8_t = self.state.memory.load(old_addr + idx, 1, disable_actions=True, inspect=False)
 
 class Free(SimProcedure):
     i = 0

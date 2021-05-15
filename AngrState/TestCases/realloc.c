@@ -3,8 +3,8 @@
 int main()
 {
   void *p, *q, *r;
-  p = malloc(0x40);
+  p = malloc(0x10);
   r = malloc(20);
-  q = realloc(p, 0x60);
+  q = realloc(p, 0x20);
   return q;
 }

@@ -1,0 +1,8 @@
+#include<stdio.h>
+int main()
+{
+  char p[200] = "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION\350\356\t#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:\037.82,\nau_to0.ts\n\003EXT-X-ENDLIST\n";
+  char res[20];
+  sscanf(p, "-->> %s", res);
+  printf("%s", res);
+}

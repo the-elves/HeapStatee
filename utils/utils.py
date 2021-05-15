@@ -4,12 +4,26 @@ import pdb
 import code
 import sys
 
-# checkpoint_address = 0x8f752c
-next_stopping_addr = -1
+checkpoint_address = 0
+nsa = -1
 START_TRACKING_FLAG = False
 DEBUG=True
 VULN_FLAG = False
 
+
+def normalize_size(state, data, size):
+    if size is not None:
+        return state.solver.eval(size)
+    max_size = len(data) // state.arch.byte_width
+    if size is None:
+        out_size = max_size
+    elif type(size) is int:
+        out_size = size
+    elif getattr(size, 'op', None) == 'BVV':
+        out_size = size.args[0]
+    else:
+        raise Exception("Size must be concretely resolved by this point in the memory stack")
+    return state.solver.eval(out_size)
 
 def constrained_concretize_file(state, constraints):
     b=state.project

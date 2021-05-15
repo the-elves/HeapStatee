@@ -54,7 +54,7 @@ def fastbin_chunk(chunk, heap):
             return True
     return False
 
-def write_in_free_chunk(addr, heap: HeapState):
+def access_in_free_chunk(addr, heap: HeapState):
     c = chunk_containing_address(addr, heap)
     if c is None:
         raise(ChunkNotFoundException("Chunk for address {:x} not found".format(addr)))
