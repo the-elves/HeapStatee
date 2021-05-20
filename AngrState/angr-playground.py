@@ -42,7 +42,7 @@ logging.getLogger('angr').setLevel('INFO')
 
 def sigquit_handler(signal, frame):
     pass
-    if PYCHARM : pdb.set_trace()
+    if not PYCHARM : pdb.set_trace()
     for s in m.active:
         dump_callstack(s)
         s.my_heap.heap_state.dump()
@@ -170,7 +170,7 @@ def handle_heap_read(state):
         h.heap_state.dump()
         VULN_FLAG=True
         pass
-        if PYCHARM : pdb.set_trace()
+        if not PYCHARM : pdb.set_trace()
         dump_concretized_file(state)
         
 def handle_heap_write(state):
@@ -218,7 +218,7 @@ def handle_heap_write(state):
 #        ------------
 #
         pass
-        if PYCHARM : pdb.set_trace()
+        if not PYCHARM : pdb.set_trace()
         dump_concretized_file(state)
 
 
@@ -228,7 +228,7 @@ def bp_action_write(state):
     write_length = normalize_size(state, state.inspect.mem_write_expr, state.inspect.mem_write_length)
     # if write_address <= 0x1f07b20 and 0x1f07b20 <= write_address + write_length: 
     #     print("writing to got")
-    # if PYCHARM : pdb.set_trace()
+    # if not PYCHARM : pdb.set_trace()
     if addr_in_heap(write_address, state.my_heap.heap_state):
         handle_heap_write(state)
 
@@ -237,7 +237,7 @@ def bp_action_read(state):
     read_length = normalize_size(state, state.inspect.mem_read_expr, state.inspect.mem_read_length)
     # if write_address <= 0x1f07b20 and 0x1f07b20 <= write_address + write_length: 
     #     print("writing to got")
-    # if PYCHARM : pdb.set_trace()
+    # if not PYCHARM : pdb.set_trace()
     if addr_in_heap(read_address, state.my_heap.heap_state):
         handle_heap_read(state)
 
@@ -391,7 +391,7 @@ while len(m.active) > 0:
                 dump_context(s)
             pass
             if pdb_stopping_condition():
-                if PYCHARM : pdb.set_trace()
+                if not PYCHARM : pdb.set_trace()
         except angr.SimEngineError as e:
             print(str(e))
             print("Disassembly not available")
@@ -416,7 +416,7 @@ while len(m.active) > 0:
             raise e
             if "No bytes" not in str(e):
                 pass
-                if PYCHARM : pdb.set_trace()
+                if not PYCHARM : pdb.set_trace()
 #        except:
             print('\nno output error')
             print(str(e))
