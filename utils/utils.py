@@ -9,7 +9,7 @@ nsa = -1
 START_TRACKING_FLAG = False
 DEBUG=True
 VULN_FLAG = False
-
+PYCHARM = False
 
 def normalize_size(state, data, size):
     if size is not None:
@@ -81,15 +81,23 @@ def dump_concretized_file(state):
             code.interact(local=locals())
 
 def debug_dump(state, message):
+    global VULN_FLAG
     print(message)
     print(dump_callstack(state))
     heap_state = state.my_heap.heap_state
     heap_state.dump()
     if VULN_FLAG:
-        pdb.set_trace()
+        VULN_FLAG = False
+        pass
+        # pdb.set_trace()
 
 
-        
+def inconsistent_breakpoint():
+    print("heap state inconsistent")
+    pass
+    # pdb.set_trace()
+
+
 def dump_state(state, state_name=None):
     b=state.project
     today = datetime.now()

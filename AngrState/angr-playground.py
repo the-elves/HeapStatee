@@ -26,7 +26,7 @@ HOUR = 60*60
 time_limit = HOUR*24
 start_time = datetime.now()
 start = False
-current_deferred_count = 0
+last_deferred_count = 0
 
 
 
@@ -41,7 +41,8 @@ logging.getLogger('angr').setLevel('INFO')
 
 
 def sigquit_handler(signal, frame):
-    pdb.set_trace()
+    pass
+    if PYCHARM : pdb.set_trace()
     for s in m.active:
         dump_callstack(s)
         s.my_heap.heap_state.dump()
@@ -143,6 +144,7 @@ def initialize_project(b, ss):
     ss.inspect.b('mem_read', when=angr.BP_BEFORE, action=bp_action_read)
     initialize_logger(b.filename)
     setup_filesystem(ss)
+    VULN_FLAG = False
 
 
 def handle_heap_read(state):
@@ -167,7 +169,8 @@ def handle_heap_read(state):
         h = state.my_heap
         h.heap_state.dump()
         VULN_FLAG=True
-        pdb.set_trace()
+        pass
+        if PYCHARM : pdb.set_trace()
         dump_concretized_file(state)
         
 def handle_heap_write(state):
@@ -214,7 +217,8 @@ def handle_heap_write(state):
 #        constrained_concretize_file(state, cons)
 #        ------------
 #
-        pdb.set_trace()
+        pass
+        if PYCHARM : pdb.set_trace()
         dump_concretized_file(state)
 
 
@@ -224,7 +228,7 @@ def bp_action_write(state):
     write_length = normalize_size(state, state.inspect.mem_write_expr, state.inspect.mem_write_length)
     # if write_address <= 0x1f07b20 and 0x1f07b20 <= write_address + write_length: 
     #     print("writing to got")
-    #     pdb.set_trace()
+    # if PYCHARM : pdb.set_trace()
     if addr_in_heap(write_address, state.my_heap.heap_state):
         handle_heap_write(state)
 
@@ -233,13 +237,13 @@ def bp_action_read(state):
     read_length = normalize_size(state, state.inspect.mem_read_expr, state.inspect.mem_read_length)
     # if write_address <= 0x1f07b20 and 0x1f07b20 <= write_address + write_length: 
     #     print("writing to got")
-    #     pdb.set_trace()
+    # if PYCHARM : pdb.set_trace()
     if addr_in_heap(read_address, state.my_heap.heap_state):
         handle_heap_read(state)
 
 
 def setup_filesystem(estate):
-    host_file_system = angr.SimHostFilesystem('/home/ajinkya/Guided_HLM/guest_chroot/')
+    host_file_system = angr.SimHostFilesystem('../../guest_chroot/')
     host_file_system.set_state(estate)
     estate.fs.mount('/exploits',host_file_system)
     
@@ -272,17 +276,28 @@ def print_libs(p):
 def pdb_stopping_condition():
     global nsa
     global m
-    global current_deferred_count
-    current_addresses = m.active[0].block().instruction_addrs
-    if checkpoint_address in current_addresses and sys.argv[2] != 'l':
-        print("creating checkpoint ", hex(m.active[0].addr))
-        dump_checkpoint(m, str(hex(m.active[0].addr))+".ckp")
-    if nsa in current_addresses  or \
-       nsa == -1: 
-        return True
-    # elif len(m.deferred) > current_deferred_count:
+    global last_deferred_count
+    last_deffered_count_holder = last_deferred_count
+    last_deferred_count = len(m.deferred)
+    try:
+        current_addresses = m.active[0].block().instruction_addrs
+        if checkpoint_address in current_addresses and sys.argv[2] != 'l':
+            print("creating checkpoint ", hex(m.active[0].addr))
+            dump_checkpoint(m, str(hex(m.active[0].addr)) + ".ckp")
+        # if len(m.deferred) > last_deffered_count_holder:
+        #     print("Deferred stated added.")
+        #     return True
+        if len(m.deferred) < last_deffered_count_holder:
+            print("Deferred stated removed.")
+            return True
+        if nsa in current_addresses  or \
+           nsa == -1:
+            return True
+    except angr.SimEngineError as e:
+        print("Disassembly not available")
+    # elif len(m.deferred) > last_deferred_count:
     #     print("Stopping reason: deferred state added")
-    #     current_deferred_count+=1
+    #     last_deferred_count+=1
     else: return False
 
 def dump_regs(s):
@@ -307,7 +322,7 @@ signal.signal(signal.SIGQUIT, sigquit_handler)
 parsePlaylistCount = 0
 binary_name = sys.argv[2]
 loader_libraries = ['../../tools/glibc-dir/install/lib64/libc-2.27.so',
-                                  '/home/ajinkya/Guided_HLM/tools/glibc-dir/install/lib64/ld-2.27.so']
+                                  '../../tools/glibc-dir/install/lib64/ld-2.27.so']
 
 # sim_procedure_blacklist = ['fopen', 'fclose']
 if 'HEAPSTATE_LIBS' in os.environ.keys():
@@ -354,7 +369,6 @@ else:
 m.use_technique(DFS())
 
 
-# pdb.set_trace()
 progress=0
 
 # m.run()
@@ -375,8 +389,9 @@ while len(m.active) > 0:
         try:
             for s in m.active:
                 dump_context(s)
+            pass
             if pdb_stopping_condition():
-                pdb.set_trace()     
+                if PYCHARM : pdb.set_trace()
         except angr.SimEngineError as e:
             print(str(e))
             print("Disassembly not available")
@@ -398,8 +413,10 @@ while len(m.active) > 0:
             #     vl.warning('Errored: ' + str(es.error))
             pass        
         except angr.SimEngineError as e:
+            raise e
             if "No bytes" not in str(e):
-                pdb.set_trace()
+                pass
+                if PYCHARM : pdb.set_trace()
 #        except:
             print('\nno output error')
             print(str(e))

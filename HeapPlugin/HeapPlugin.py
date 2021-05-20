@@ -5,7 +5,7 @@ from angr.engines import SimSuccessors
 from HeapModel.mstate import HeapState, SIZE_SZ, MIN_SIZE
 from HeapModel.Vulns import *
 from HeapModel.heapquery import *
-from utils.utils import dump_concretized_file, nsa, debug_dump
+from utils.utils import *
 from utils import utils 
 import claripy
 import logging
@@ -67,8 +67,8 @@ class Malloc(SimProcedure):
         try:
             addr = hs.malloc(s)
             if(not is_consistent(hs)):
-                print("heap state inconsistent")
-                pdb.set_trace()
+                inconsistent_breakpoint()
+                # pdb.set_trace()
         except Vulnerability as V:
             print(V.msg, V.addr)
             l.warning(V.msg + " @ " + str(V.addr))
@@ -100,7 +100,8 @@ class Calloc(SimProcedure):
             self.memset_zero(addr, n*s)
             if(not is_consistent(hs)):
                 print("heap state inconsistent")
-                pdb.set_trace()
+                pass
+                # pdb.set_trace()
         except Vulnerability as V:
             print(V.msg, V.addr)
             l.warning(V.msg + " @ " + str(V.addr))
@@ -139,8 +140,7 @@ class Realloc(SimProcedure):
             if(utils.DEBUG):
                 debug_dump(self.state, "== AFter Realloc ==")
             if(not is_consistent(hs)):
-                print("heap state inconsistent")
-                pdb.set_trace()
+                inconsistent_breakpoint()
             return 0
         if oldmem == 0:
             new_chunk_ptr = hs.malloc(nbytes)
@@ -148,15 +148,15 @@ class Realloc(SimProcedure):
             if(utils.DEBUG):
                 debug_dump(self.state, "== AFter Realloc ==")
             if(not is_consistent(hs)):
-                print("heap state inconsistent")
-                pdb.set_trace()
+                inconsistent_breakpoint()
             return new_chunk_ptr
         # By now normal case
         
         old_chunk = hs.get_chunk_by_address(oldp)
         if old_chunk is None:
             vl.warning(f'Freeing Non existent chunk in realloc requested {Realloc.i} with size {nb:x}@{oldp:x} ')
-            pdb.set_trace()
+            pass
+            # pdb.set_trace()
             dump_concretized_file(self.state)
             newp = -2*SIZE_SZ #setting to zero before returning
         else:
@@ -166,8 +166,7 @@ class Realloc(SimProcedure):
             try:
                 newp = hs.realloc(oldp, old_size, nb)
                 if(not is_consistent(hs)):
-                    print("heap state inconsistent")
-                    pdb.set_trace()
+                    inconsistent_breakpoint()
             except Vulnerability as V:
                 print(V.msg, V.addr)
                 l.warning(V.msg + " @ " + str(V.addr))
@@ -175,7 +174,8 @@ class Realloc(SimProcedure):
                 dump_concretized_file(self.state)
                 if utils.DEBUG:
                     print("Vulnerability raised in realloc")
-                    pdb.set_trace()
+                    pass
+                    # pdb.set_trace()
         if(utils.DEBUG):
             debug_dump(self.state, "== AFter Realloc ==")
             
@@ -184,8 +184,7 @@ class Realloc(SimProcedure):
         newp += 2*SIZE_SZ
         Realloc.i+=1
         if(not is_consistent(hs)):
-            print("heap state inconsistent")
-            pdb.set_trace()
+            inconsistent_breakpoint()
         return newp
         #todo multi threaded logic
 
@@ -205,7 +204,8 @@ class Free(SimProcedure):
         # print(f'Possible addresses = {possible_addresses}')
         self.state: SimState
         if self.state.solver.symbolic(address):
-            pdb.set_trace()
+            pass
+            # pdb.set_trace()
         for pa in possible_addresses:
             sat = self.state.solver.satisfiable(extra_constraints=[address == pa])
             add = pa
@@ -225,10 +225,10 @@ class Free(SimProcedure):
                 try:
                     hs.free(add)
                     if(not is_consistent(hs)):
-                        print("heap state inconsistent")
-                        pdb.set_trace()
+                        inconsistent_breakpoint()
                 except Vulnerability as V:
-                    pdb.set_trace()
+                    pass
+                    # pdb.set_trace()
                     print("Error")
                     l.warning(V.msg + " @ " + str(V.addr))
                     vl.warning( V.msg + " @ " + str(V.addr))
@@ -261,8 +261,7 @@ class Posix_Memalign(SimProcedure):
             m = hs.malloc(size)+2*SIZE_SZ
             state.mem[ppmem].uintptr_t = m
             if(not is_consistent(hs)):
-                print("heap state inconsistent")
-                pdb.set_trace()
+                inconsistent_breakpoint()
             return 0
         if alignment <= MIN_SIZE:
             alignment = MIN_SIZE
@@ -272,8 +271,7 @@ class Posix_Memalign(SimProcedure):
         # TODO : Missing a check for >size max
         p = hs.malloc(nb+alignment+MIN_SIZE)
         if(not is_consistent(hs)):
-            print("heap state inconsistent")
-            pdb.set_trace()
+            inconsistent_breakpoint()
         m = p + 2*SIZE_SZ
         pchunk = hs.get_chunk_by_address(p)
         if m % alignment != 0:
@@ -316,8 +314,7 @@ class Posix_Memalign(SimProcedure):
         if utils.DEBUG:
             debug_dump(state, "==After memalign==")
         if(not is_consistent(hs)):
-            print("heap state inconsistent")
-            pdb.set_trace()
+            inconsistent_breakpoint()
         return 0
             
         

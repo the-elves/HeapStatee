@@ -524,7 +524,8 @@ class HeapState:
                 # instead of checking current chunks prev_inuse and we are checking if the chunk is present in free lists
                 if prev_chunk == None:
                     print ("prev_chunk is none in free")
-                    pdb.set_trace()
+                    pass
+                    # pdb.set_trace()
                     sys.exit("prev_chunk is none in free")
                 if prev_chunk.free:
                     prev_chunk_bin = prev_chunk.bin
