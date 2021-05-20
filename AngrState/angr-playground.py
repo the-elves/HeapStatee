@@ -156,7 +156,7 @@ def handle_heap_read(state):
         ra = read_start_address + i
         c = chunk_containing_address(ra, state.my_heap.heap_state)
         if c is None:
-            # l.warning('Read address outside chunk @0x{:x} Possible USE AFTER FREE'.format(ra))
+            l.warning('Read address outside chunk @0x{:x} Possible USE AFTER FREE(None type)'.format(ra))
             vuln=True
         else:
             if access_in_free_chunk(ra, state.my_heap.heap_state):
