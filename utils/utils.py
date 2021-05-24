@@ -9,7 +9,13 @@ nsa = -1
 START_TRACKING_FLAG = False
 DEBUG=True
 VULN_FLAG = False
-PYCHARM = False
+PYCHARM = True
+
+def radar_breakpoint():
+    global PYCHARM
+    if not PYCHARM:
+        pdb.set_trace()
+
 
 def normalize_size(state, data, size):
     if size is not None:

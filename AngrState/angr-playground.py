@@ -42,7 +42,7 @@ logging.getLogger('angr').setLevel('INFO')
 
 def sigquit_handler(signal, frame):
     pass
-    if not PYCHARM : pdb.set_trace()
+    radar_breakpoint()
     for s in m.active:
         dump_callstack(s)
         s.my_heap.heap_state.dump()
@@ -170,7 +170,7 @@ def handle_heap_read(state):
         h.heap_state.dump()
         VULN_FLAG=True
         pass
-        if not PYCHARM : pdb.set_trace()
+        radar_breakpoint()
         dump_concretized_file(state)
         
 def handle_heap_write(state):
@@ -218,7 +218,7 @@ def handle_heap_write(state):
 #        ------------
 #
         pass
-        if not PYCHARM : pdb.set_trace()
+        radar_breakpoint()
         dump_concretized_file(state)
 
 
@@ -228,16 +228,21 @@ def bp_action_write(state):
     write_length = normalize_size(state, state.inspect.mem_write_expr, state.inspect.mem_write_length)
     # if write_address <= 0x1f07b20 and 0x1f07b20 <= write_address + write_length: 
     #     print("writing to got")
-    # if not PYCHARM : pdb.set_trace()
+    # radar_breakpoint()
     if addr_in_heap(write_address, state.my_heap.heap_state):
         handle_heap_write(state)
 
 def bp_action_read(state):
     read_address = state.solver.eval(state.inspect.mem_read_address)
+    if read_address == 0:
+        rip = state.solver.eavl(state.regs.rip)
+        print(f"SEGFAULT read address 0 from rip {rip:x}")
+        vl.warning(f"SEGFAULT read address 0 from rip {rip:x}")
+        radar_breakpoint()
     read_length = normalize_size(state, state.inspect.mem_read_expr, state.inspect.mem_read_length)
     # if write_address <= 0x1f07b20 and 0x1f07b20 <= write_address + write_length: 
     #     print("writing to got")
-    # if not PYCHARM : pdb.set_trace()
+    # radar_breakpoint()
     if addr_in_heap(read_address, state.my_heap.heap_state):
         handle_heap_read(state)
 
@@ -278,7 +283,8 @@ def pdb_stopping_condition():
     global m
     global last_deferred_count
     last_deffered_count_holder = last_deferred_count
-    last_deferred_count = len(m.deferred)
+    if hasattr(m, 'deferred'):
+        last_deferred_count = len(m.deferred)
     try:
         current_addresses = m.active[0].block().instruction_addrs
         if checkpoint_address in current_addresses and sys.argv[2] != 'l':
@@ -287,9 +293,9 @@ def pdb_stopping_condition():
         # if len(m.deferred) > last_deffered_count_holder:
         #     print("Deferred stated added.")
         #     return True
-        if len(m.deferred) < last_deffered_count_holder:
-            print("Deferred stated removed.")
-            return True
+        # if len(m.deferred) < last_deffered_count_holder:
+        #     print("Deferred stated removed.")
+        #     return True
         if nsa in current_addresses  or \
            nsa == -1:
             return True
@@ -366,7 +372,7 @@ if sys.argv[1][2] == 'l':
     m = b.factory.simulation_manager([],stashes=stashes)
 else:
     m = b.factory.simulation_manager(estate)
-m.use_technique(DFS())
+# m.use_technique(DFS())
 
 
 progress=0
@@ -383,15 +389,16 @@ while len(m.active) > 0:
     timestr = now.strftime("%H:%M:%S")
     addr = m.active[0].solver.eval(m.active[0].regs.ip)
     print(timestr, 'active states = ', len(m.active), 'rip = ', hex(addr))
-    print('no active stashes ', len(m.active), "no. deferred ", len(m.deferred))
-    #print('stashes ', m.active)    
+    if hasattr(m, 'deferred'):
+        print('no active stashes ', len(m.active), "no. deferred ", len(m.deferred))
+    #print('stashes ', m.active)
     if sys.argv[1][0] == 'd':
         try:
             for s in m.active:
                 dump_context(s)
             pass
             if pdb_stopping_condition():
-                if not PYCHARM : pdb.set_trace()
+                radar_breakpoint()
         except angr.SimEngineError as e:
             print(str(e))
             print("Disassembly not available")
@@ -416,7 +423,7 @@ while len(m.active) > 0:
             raise e
             if "No bytes" not in str(e):
                 pass
-                if not PYCHARM : pdb.set_trace()
+                radar_breakpoint()
 #        except:
             print('\nno output error')
             print(str(e))
