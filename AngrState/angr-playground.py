@@ -257,8 +257,8 @@ def setup_filesystem(estate):
     symfile.set_state(estate)
     if 'SYMFILE_NAME' in os.environ.keys():
         estate.fs.insert(os.environ['SYMFILE_NAME'], symfile)
-    # else:
-    #     estate.fs.insert('/symfiles/mysymfile', symfile)
+    else:
+        estate.fs.insert('/symfiles/mysymfile', symfile)
 
     
 def alarm_handler(signum, frame):
