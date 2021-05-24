@@ -235,7 +235,7 @@ def bp_action_write(state):
 def bp_action_read(state):
     read_address = state.solver.eval(state.inspect.mem_read_address)
     if read_address == 0:
-        rip = state.solver.eavl(state.regs.rip)
+        rip = state.solver.eval(state.regs.rip)
         print(f"SEGFAULT read address 0 from rip {rip:x}")
         vl.warning(f"SEGFAULT read address 0 from rip {rip:x}")
         radar_breakpoint()
