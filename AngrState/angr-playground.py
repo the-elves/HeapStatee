@@ -7,20 +7,16 @@ sys.setrecursionlimit(1500)
 sys.path.append('../')
 from HeapPlugin.HeapPlugin import HeapPlugin, Malloc, Free, Calloc, Realloc, Perror, Posix_Memalign
 from HeapModel.heapquery import *
-import angr
 from angr import SIM_PROCEDURES
 import claripy
 import logging
-from datetime import datetime
 import signal
-import pdb
-from angr.exploration_techniques import DFS
 import os
 from utils.utils import *
 from utils.fcntl import *
 from angr import sim_options as o
 from HeapModel.Colors import bcolors as c
-
+from procedures.reach_error import reach_error
 
 HOUR = 60*60
 time_limit = HOUR*24
@@ -132,6 +128,9 @@ def hook_simprocs(b, ss):
     '''Experimental be careful might need to remove'''
     print("[+] hooking fcntl")
     b.hook_symbol('fcntl', Fcntl())
+
+    print("[+] hooking reach_error")
+    b.hook_symbol('reach_error', reach_error())
     
 def initialize_project(b, ss):
     heap_starting_address = get_heap_starting_address(b)
