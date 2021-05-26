@@ -23,7 +23,7 @@ time_limit = HOUR*24
 start_time = datetime.now()
 start = False
 last_deferred_count = 0
-
+last_deadended_count = 0
 
 
 if sys.argv[1][1] == 's':
@@ -281,14 +281,23 @@ def pdb_stopping_condition():
     global nsa
     global m
     global last_deferred_count
+    global last_deadended_count
     last_deffered_count_holder = last_deferred_count
     if hasattr(m, 'deferred'):
         last_deferred_count = len(m.deferred)
+    if hasattr(m, 'deadended'):
+        last_deadended_count = len(m.deadended)
+
     try:
         current_addresses = m.active[0].block().instruction_addrs
         if checkpoint_address in current_addresses and sys.argv[2] != 'l':
             print("creating checkpoint ", hex(m.active[0].addr))
             dump_checkpoint(m, str(hex(m.active[0].addr)) + ".ckp")
+        if len(m.deadended) > last_deadended_count:
+            print("Deadended state added stated added.")
+            if mem_leak(m.deadended[-1].my_heap.heap_state):
+                radar_breakpoint()
+            last_deadended_count = len(m.deadended)
         # if len(m.deferred) > last_deffered_count_holder:
         #     print("Deferred stated added.")
         #     return True

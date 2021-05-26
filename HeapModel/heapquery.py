@@ -2,6 +2,9 @@ from HeapModel.mstate import HeapState, SIZE_SZ, Chunk, MALLOC_ALLIGNMENT, MALLO
 from HeapModel.Vulns import ChunkNotFoundException
 import pdb
 
+def mem_leak(h:HeapState):
+    return len(h.allocated_chunks) > 0
+
 def is_consistent(h:HeapState):
     current_chunk = h.get_chunk_by_address(h.startAddress)
     allchunks = h.get_all_chunks()
