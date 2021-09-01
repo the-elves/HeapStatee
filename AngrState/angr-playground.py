@@ -16,7 +16,7 @@ from utils.utils import *
 from utils.fcntl import *
 from angr import sim_options as o
 from HeapModel.Colors import bcolors as c
-from procedures.reach_error import reach_error
+from procedures.reach_error import reach_error, __VERIFIER_error
 
 HOUR = 60*60
 time_limit = HOUR*24
@@ -33,7 +33,7 @@ else:
 
 l = logging.getLogger('heap_analysis')
 
-logging.getLogger('angr').setLevel('INFO')
+#logging.getLogger('angr').setLevel('INFO')
 
 
 def sigquit_handler(signal, frame):
@@ -131,6 +131,9 @@ def hook_simprocs(b, ss):
 
     print("[+] hooking reach_error")
     b.hook_symbol('reach_error', reach_error())
+
+    # print("[+] hooking __VERIFIER_error")
+    # b.hook_symbol("__VERIFIER_error", __VERIFIER_error())
     
 def initialize_project(b, ss):
     heap_starting_address = get_heap_starting_address(b)
@@ -142,7 +145,10 @@ def initialize_project(b, ss):
     ss.inspect.b('mem_write', when=angr.BP_BEFORE, action=bp_action_write)
     ss.inspect.b('mem_read', when=angr.BP_BEFORE, action=bp_action_read)
     initialize_logger(b.filename)
-    setup_filesystem(ss)
+    # TODO: Remember to change back
+    #setup_filesystem(ss)
+    ss.libc.max_memcpy_size = 0x3000
+    
     VULN_FLAG = False
 
 
@@ -169,7 +175,7 @@ def handle_heap_read(state):
         h.heap_state.dump()
         VULN_FLAG=True
         pass
-        radar_breakpoint()
+#        radar_breakpoint()
         dump_concretized_file(state)
         
 def handle_heap_write(state):
@@ -193,8 +199,8 @@ def handle_heap_write(state):
                 state.block().pp();
                 # l.warning('write @ {:x} is in free chunk {:x} argv = {} stdin={}'.format(wa, c.address, conc_argv, conc_stdin))
                 rip = state.solver.eval(state.regs.rip)
-                # vl.warning('rip = {:x} write @ {:x} is in free chunk {:x} argv = {} stdin={} write_address = {:x}'.format(rip, wa, c.address, conc_argv, conc_stdin, write_address + wi))
-                # vl.warning(dump_callstack(state))
+                vl.warning('rip = {:x} write @ {:x} is in free chunk {:x} argv = {} stdin={} write_address = {:x}'.format(rip, wa, c.address, conc_argv, conc_stdin, write_address + wi))
+                vl.warning(dump_callstack(state))
                 vuln = True    
             if metadata_cloberring(wa, state.my_heap.heap_state):
                 conc_argv = state.solver.eval(argvinp)
@@ -202,8 +208,8 @@ def handle_heap_write(state):
                 state.block().pp();
                 rip = state.solver.eval(state.regs.rip)
                 # l.warning('Metadata of heap chunk @ 0x{:x} cloberred argv = {} stdin={} write_address = 0x{:x}'.format(c.address, conc_argv, conc_stdin, write_address+wi))
-                # vl.warning('rip = {:x} Metadata of heap chunk @ 0x{:x} cloberred argv = {} stdin={} write_address = 0x{:x}'.format(rip, c.address, conc_argv, conc_stdin, write_address+wi))
-                # vl.warning(dump_callstack(state))
+                vl.warning('rip = {:x} Metadata of heap chunk @ 0x{:x} cloberred argv = {} stdin={} write_address = 0x{:x}'.format(rip, c.address, conc_argv, conc_stdin, write_address+wi))
+                vl.warning(dump_callstack(state))
                 vuln = True
     if(vuln):
         h = state.my_heap
@@ -217,7 +223,7 @@ def handle_heap_write(state):
 #        ------------
 #
         pass
-        radar_breakpoint()
+#        radar_breakpoint()
         dump_concretized_file(state)
 
 
@@ -252,7 +258,7 @@ def setup_filesystem(estate):
     estate.fs.mount('/exploits',host_file_system)
     
     symfilename = 'mysymfile'
-    symfile = angr.SimFile(symfilename, size=200*1024)
+    symfile = angr.SimFile(symfilename, size=2*1024)
     symfile.set_state(estate)
     if 'SYMFILE_NAME' in os.environ.keys():
         estate.fs.insert(os.environ['SYMFILE_NAME'], symfile)
@@ -285,9 +291,6 @@ def pdb_stopping_condition():
     last_deffered_count_holder = last_deferred_count
     if hasattr(m, 'deferred'):
         last_deferred_count = len(m.deferred)
-    if hasattr(m, 'deadended'):
-        last_deadended_count = len(m.deadended)
-
     try:
         current_addresses = m.active[0].block().instruction_addrs
         if checkpoint_address in current_addresses and sys.argv[2] != 'l':
@@ -296,7 +299,9 @@ def pdb_stopping_condition():
         if len(m.deadended) > last_deadended_count:
             print("Deadended state added stated added.")
             if mem_leak(m.deadended[-1].my_heap.heap_state):
-                radar_breakpoint()
+                print("Mem leak detected")
+                vl.warning("Mem leak detected")
+                #radar_breakpoint()
             last_deadended_count = len(m.deadended)
         # if len(m.deferred) > last_deffered_count_holder:
         #     print("Deferred stated added.")
@@ -419,6 +424,7 @@ while len(m.active) > 0:
             print("Disassembly not available")
         try:
             m.step()
+            print(m.stashes)
             if len(m.active) > 0:
                 print(c.ENDC, 'posix out', str(m.active[0].posix.dumps(1))[:100], c.ENDC)
                 print(c.ENDC, 'posix err', str(m.active[0].posix.dumps(2))[:100], c.ENDC)
