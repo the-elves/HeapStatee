@@ -29,6 +29,7 @@ class HeapPlugin(SimStatePlugin):
             self.heap_state = HeapState(startingAddress)
         else:
             self.heap_state = h
+        self.rands = []
 
     def set_heap(self, h):
         self.heap_state = h
@@ -48,7 +49,9 @@ class HeapPlugin(SimStatePlugin):
     @SimStatePlugin.memo
     def copy(self, memo):
         heap_copy = deepcopy(self.heap_state)
+        rands_copy = deepcopy(self.rands)
         new_heap_plugin = HeapPlugin(h = heap_copy)
+        new_heap_plugin.rands = rands_copy
         return new_heap_plugin
 
 

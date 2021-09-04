@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
+import angr
 import psutil
 import sys
 print(sys.getrecursionlimit())
@@ -17,6 +18,7 @@ from utils.fcntl import *
 from angr import sim_options as o
 from HeapModel.Colors import bcolors as c
 from procedures.reach_error import reach_error, __VERIFIER_error
+from angr.exploration_techniques import DFS
 
 HOUR = 60*60
 time_limit = HOUR*24
@@ -146,8 +148,10 @@ def initialize_project(b, ss):
     ss.inspect.b('mem_read', when=angr.BP_BEFORE, action=bp_action_read)
     initialize_logger(b.filename)
     # TODO: Remember to change back
-    #setup_filesystem(ss)
+    setup_filesystem(ss)
     ss.libc.max_memcpy_size = 0x3000
+    ss.libc.max_str_len = 1000
+    ss.libc.buf_symbolic_bytes = 1000
     
     VULN_FLAG = False
 
@@ -175,7 +179,8 @@ def handle_heap_read(state):
         h.heap_state.dump()
         VULN_FLAG=True
         pass
-#        radar_breakpoint()
+        exit(3)
+        # radar_breakpoint()
         dump_concretized_file(state)
         
 def handle_heap_write(state):
@@ -214,6 +219,9 @@ def handle_heap_write(state):
     if(vuln):
         h = state.my_heap
         h.heap_state.dump()
+        abort_procedure = angr.SIM_PROCEDURES['libc']['exit']
+        exit(3)
+        state.inline_call()
         VULN_FLAG=True
 #        temp-----------
 #        cons = {}
@@ -223,7 +231,7 @@ def handle_heap_write(state):
 #        ------------
 #
         pass
-#        radar_breakpoint()
+        # radar_breakpoint()
         dump_concretized_file(state)
 
 
@@ -243,7 +251,7 @@ def bp_action_read(state):
         rip = state.solver.eval(state.regs.rip)
         print(f"SEGFAULT read address 0 from rip {rip:x}")
         vl.warning(f"SEGFAULT read address 0 from rip {rip:x}")
-        radar_breakpoint()
+        # radar_breakpoint()
     read_length = normalize_size(state, state.inspect.mem_read_expr, state.inspect.mem_read_length)
     # if write_address <= 0x1f07b20 and 0x1f07b20 <= write_address + write_length: 
     #     print("writing to got")
@@ -357,18 +365,24 @@ b = angr.Project(binary_name, auto_load_libs=True,
 print_libs(b)
 
 
-num_sym_bytes = 20
-input_chars = [claripy.BVS(f'flag{i}',8) for i in range(num_sym_bytes)] + [claripy.BVV('\n', 8)]
+num_sym_bytes = 1000
+input_chars = [claripy.BVS(f'flag{i}',8) for i in range(num_sym_bytes)] + [claripy.BVV(0, 8)]
 argvinp = claripy.Concat(*input_chars)
-
+argv = sys.argv[2:]
+argv.append(argvinp)
 
 stdin_bytes_list = [claripy.BVS('byte_%d' % i, 8) for i in range(3200)]
 stdin_bytes_ast = claripy.Concat(*stdin_bytes_list)
 
 add_options = [o.USE_SYSTEM_TIMES, o.MEMORY_CHUNK_INDIVIDUAL_READS]
 remove_options = [o.ALL_FILES_EXIST]
-estate = b.factory.entry_state(args = sys.argv[2:], add_options=add_options, remove_options=remove_options) #, stdin=angr.SimFile('/dev/stdin', content=stdin_bytes_ast))
+estate = b.factory.entry_state(args = argv, add_options=add_options, remove_options=remove_options) #, stdin=angr.SimFile('/dev/stdin', content=stdin_bytes_ast))
 
+for i, f in enumerate(input_chars):
+    if i == len(input_chars)-1:
+        break
+    estate.add_constraints(input_chars[i] != 0)
+print("is satisfiable?", estate.satisfiable())
 #estate = b.factory.entry_state(argc = 2, argv = [binary_name, input_chars])
 # for i in range(num_sym_bytes-1):
 #     c=argvinp.chop(8)[i]
@@ -385,9 +399,8 @@ if sys.argv[1][2] == 'l':
     m = b.factory.simulation_manager([],stashes=stashes)
 else:
     m = b.factory.simulation_manager(estate)
-# m.use_technique(DFS())
 
-
+m.use_technique(DFS())
 progress=0
 
 # m.run()
@@ -437,7 +450,7 @@ while len(m.active) > 0:
             raise e
             if "No bytes" not in str(e):
                 pass
-                radar_breakpoint()
+                # radar_breakpoint()
 #        except:
             print('\nno output error')
             print(str(e))
