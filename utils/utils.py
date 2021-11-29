@@ -9,7 +9,7 @@ nsa = -1
 START_TRACKING_FLAG = False
 DEBUG=True
 VULN_FLAG = False
-PYCHARM = True
+PYCHARM = False
 
 def radar_breakpoint():
     global PYCHARM

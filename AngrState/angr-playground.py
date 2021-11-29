@@ -19,6 +19,10 @@ from angr import sim_options as o
 from HeapModel.Colors import bcolors as c
 from procedures.reach_error import reach_error, __VERIFIER_error
 from angr.exploration_techniques import DFS
+import cProfile
+from datetime import datetime, timedelta
+import config
+
 
 HOUR = 60*60
 time_limit = HOUR*24
@@ -28,10 +32,9 @@ last_deferred_count = 0
 last_deadended_count = 0
 
 
-if sys.argv[1][1] == 's':
-    nsa=-1
-else:
-    nsa=1
+if config.stop_at_beginning:
+    config.nsa=-1
+
 
 l = logging.getLogger('heap_analysis')
 
@@ -39,6 +42,7 @@ l = logging.getLogger('heap_analysis')
 
 
 def sigquit_handler(signal, frame):
+    exit()
     pass
     radar_breakpoint()
     for s in m.active:
@@ -75,8 +79,8 @@ def hook_unlocked_functions(b):
         b.hook_symbol(f+"_unlocked", SIM_PROCEDURES['libc'][f]())
 
 def hook_iso_prefixed_functions(b):
-#    funcs ="sscanf, sprintf".split(", ")
-    funcs ="sprintf".split(", ")    
+    funcs ="sscanf, sprintf".split(", ")
+    # funcs ="sprintf".split(", ")    
     for f in funcs:
         b.hook_symbol("__isoc99_"+f, SIM_PROCEDURES['libc'][f]())
 
@@ -147,11 +151,10 @@ def initialize_project(b, ss):
     ss.inspect.b('mem_write', when=angr.BP_BEFORE, action=bp_action_write)
     ss.inspect.b('mem_read', when=angr.BP_BEFORE, action=bp_action_read)
     initialize_logger(b.filename)
-    # TODO: Remember to change back
     setup_filesystem(ss)
-    ss.libc.max_memcpy_size = 0x3000
-    ss.libc.max_str_len = 1000
-    ss.libc.buf_symbolic_bytes = 1000
+    # ss.libc.max_memcpy_size = 0x3000
+    ss.libc.max_str_len = 512
+    ss.libc.buf_symbolic_bytes = 128
     
     VULN_FLAG = False
 
@@ -292,18 +295,11 @@ def print_libs(p):
 
 
 def pdb_stopping_condition():
-    global nsa
     global m
     global last_deferred_count
     global last_deadended_count
-    last_deffered_count_holder = last_deferred_count
-    if hasattr(m, 'deferred'):
-        last_deferred_count = len(m.deferred)
     try:
         current_addresses = m.active[0].block().instruction_addrs
-        if checkpoint_address in current_addresses and sys.argv[2] != 'l':
-            print("creating checkpoint ", hex(m.active[0].addr))
-            dump_checkpoint(m, str(hex(m.active[0].addr)) + ".ckp")
         if len(m.deadended) > last_deadended_count:
             print("Deadended state added stated added.")
             if mem_leak(m.deadended[-1].my_heap.heap_state):
@@ -311,14 +307,9 @@ def pdb_stopping_condition():
                 vl.warning("Mem leak detected")
                 #radar_breakpoint()
             last_deadended_count = len(m.deadended)
-        # if len(m.deferred) > last_deffered_count_holder:
-        #     print("Deferred stated added.")
-        #     return True
-        # if len(m.deferred) < last_deffered_count_holder:
-        #     print("Deferred stated removed.")
-        #     return True
-        if nsa in current_addresses  or \
-           nsa == -1:
+        print('Config.nsa', hex(config.nsa))
+        if config.nsa in current_addresses  or \
+           config.nsa == -1:
             return True
     except angr.SimEngineError as e:
         print("Disassembly not available")
@@ -341,13 +332,24 @@ def dump_context(s):
     print("Regs")
     dump_regs(s)
     s.block().pp()
-    print(dump_callstack(s))
     
-    
+
+
+def get_stream(m, handle):
+    stream = ''
+    for ch in m.active[0].posix.dumps(handle):
+        if ch== b'\0':
+            break
+        else:
+            stream =  stream + chr(ch)
+            
+    return stream
+
+
 signal.signal(signal.SIGQUIT, sigquit_handler)
 
 parsePlaylistCount = 0
-binary_name = sys.argv[2]
+binary_name = sys.argv[1]
 loader_libraries = ['../../tools/glibc-dir/install/lib64/libc-2.27.so',
                                   '../../tools/glibc-dir/install/lib64/ld-2.27.so']
 
@@ -368,8 +370,8 @@ print_libs(b)
 num_sym_bytes = 1000
 input_chars = [claripy.BVS(f'flag{i}',8) for i in range(num_sym_bytes)] + [claripy.BVV(0, 8)]
 argvinp = claripy.Concat(*input_chars)
-argv = sys.argv[2:]
-argv.append(argvinp)
+argv = sys.argv[1:]
+# argv.append(argvinp)
 
 stdin_bytes_list = [claripy.BVS('byte_%d' % i, 8) for i in range(3200)]
 stdin_bytes_ast = claripy.Concat(*stdin_bytes_list)
@@ -392,7 +394,7 @@ initialize_project(b, estate)
 
 print("Heap starting at ", hex(estate.my_heap.heap_state.startAddress))
 
-if sys.argv[1][2] == 'l':
+if config.checkpoint:
     cp_name = '0x4eca00.ckp'
     print("loading checkpoint ", cp_name)
     stashes = load_checkpoint(cp_name)
@@ -418,17 +420,19 @@ while len(m.active) > 0:
     if hasattr(m, 'deferred'):
         print('no active stashes ', len(m.active), "no. deferred ", len(m.deferred))
     #print('stashes ', m.active)
-    if sys.argv[1][0] == 'd':
+    if config.debug:
         try:
             for s in m.active:
                 dump_context(s)
             pass
             if pdb_stopping_condition():
-                radar_breakpoint()
+                # radar_breakpoint()
+                pdb.set_trace()
         except angr.SimEngineError as e:
             print(str(e))
             print("Disassembly not available")
-            
+    for s in m.active:
+        print(dump_callstack(s))
     if(not stopping_condition()):
         try:
             if 0x08f6490 in m.active[0].block().instruction_addrs:
@@ -436,11 +440,19 @@ while len(m.active) > 0:
         except angr.SimEngineError as e:
             print("Disassembly not available")
         try:
+            #step_start_time = datetime.now()
             m.step()
+            #cProfile.run('m.step()')
+            #step_end_time = datetime.now()
+            #if step_end_time-step_start_time > timedelta(seconds=10):
+            #    input()
             print(m.stashes)
             if len(m.active) > 0:
-                print(c.ENDC, 'posix out', str(m.active[0].posix.dumps(1))[:100], c.ENDC)
-                print(c.ENDC, 'posix err', str(m.active[0].posix.dumps(2))[:100], c.ENDC)
+                strout = get_stream(m, 1)
+                strerr = get_stream(m, 2)
+                    
+                print(c.ENDC, 'posix out', strout, c.ENDC)
+                print(c.ENDC, 'posix err', strerr, c.ENDC)
             print('parsePlaylistCount', parsePlaylistCount)
             # for es in m.errored:
             #     print('Errored: ', es.error)
