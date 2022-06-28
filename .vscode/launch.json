@@ -1,0 +1,33 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Angr Playground Debug",
+            "type": "python",
+            "request": "launch",
+            "program": "/home/ajinkya/Guided_HLM/HeapStatee/AngrState/angr-playground.py",
+            "cwd": "/home/ajinkya/Guided_HLM/HeapStatee/AngrState",
+            "console": "integratedTerminal",
+            "args": [
+                "/home/ajinkya/Guided_HLM/eval/Repos/GE/bzip2/build/bzip2",
+                "/symfiles/mysymfile",
+                "-k"
+            ],
+            "justMyCode": false
+        },
+        {
+            "name": "ffmpgeg launch",
+            "type": "python",
+            "request": "launch",
+            "program": "/home/ajinkya/Guided_HLM/HeapStatee/AngrState/angr-playground.py",
+            "python": "/home/ajinkya/angr9/bin/python", 
+            "args": ["/home/ajinkya/Guided_HLM/eval/Repos/FFmpeg/ffmpeg",
+                 "-i", "/exploits/ffmpeg-exp.m3u8"],
+            "justMyCode": false, 
+            "cwd": "/home/ajinkya/Guided_HLM/HeapStatee/AngrState"
+        }
+    ]
+}

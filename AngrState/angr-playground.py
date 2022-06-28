@@ -22,7 +22,7 @@ from angr.exploration_techniques import DFS
 import cProfile
 from datetime import datetime, timedelta
 import config
-
+from utils.path_end_hook import DFSCoveragePathEndHook
 
 HOUR = 60*60
 time_limit = HOUR*24
@@ -32,8 +32,11 @@ last_deferred_count = 0
 last_deadended_count = 0
 
 
+coverage_filename = sys.argv[1].split('/')[-1]
+coverage_filename = 'outputs/' + coverage_filename+'-cov.txt'
+
 if config.stop_at_beginning:
-    config.nsa=-1
+    config.nsa[0]=-1
 
 
 l = logging.getLogger('heap_analysis')
@@ -79,7 +82,7 @@ def hook_unlocked_functions(b):
         b.hook_symbol(f+"_unlocked", SIM_PROCEDURES['libc'][f]())
 
 def hook_iso_prefixed_functions(b):
-    funcs ="sscanf, sprintf".split(", ")
+    funcs ="sscanf, sprintf, scanf, printf".split(", ")
     # funcs ="sprintf".split(", ")    
     for f in funcs:
         b.hook_symbol("__isoc99_"+f, SIM_PROCEDURES['libc'][f]())
@@ -307,9 +310,9 @@ def pdb_stopping_condition():
                 vl.warning("Mem leak detected")
                 #radar_breakpoint()
             last_deadended_count = len(m.deadended)
-        print('Config.nsa', hex(config.nsa))
-        if config.nsa in current_addresses  or \
-           config.nsa == -1:
+        print('Config.nsa', map(hex, config.nsa))
+        if any([stopping_addr in current_addresses for stopping_addr in config.nsa])  or \
+           config.nsa[0] == -1:
             return True
     except angr.SimEngineError as e:
         print("Disassembly not available")
@@ -345,6 +348,17 @@ def get_stream(m, handle):
             
     return stream
 
+def clean_coverage():
+    global coverage_filename
+    if os.path.exists(coverage_filename):
+        os.remove(coverage_filename)
+
+def record_bb(addr):
+    global coverage_filename
+    with open(coverage_filename, 'a+') as f:
+        record = str(hex(addr))+'\n'
+        f.write(record)
+    
 
 signal.signal(signal.SIGQUIT, sigquit_handler)
 
@@ -352,16 +366,18 @@ parsePlaylistCount = 0
 binary_name = sys.argv[1]
 loader_libraries = ['../../tools/glibc-dir/install/lib64/libc-2.27.so',
                                   '../../tools/glibc-dir/install/lib64/ld-2.27.so']
-
+excluded_sim_procedures=["__isoc99_sscanf"]
 # sim_procedure_blacklist = ['fopen', 'fclose']
 if 'HEAPSTATE_LIBS' in os.environ.keys():
     loader_libraries.extend(os.environ['HEAPSTATE_LIBS'].split(' '))
 
 print('External Libraries ', loader_libraries)
 modify_sim_procedures()
+clean_coverage()
+
 b = angr.Project(binary_name, auto_load_libs=True,
                  force_load_libs=loader_libraries,
-                 exclude_sim_procedures_list =  ["__isoc99_sscanf"]
+                 exclude_sim_procedures_list = excluded_sim_procedures
                  )
 
 print_libs(b)
@@ -402,7 +418,8 @@ if config.checkpoint:
 else:
     m = b.factory.simulation_manager(estate)
 
-m.use_technique(DFS())
+
+m.use_technique(DFS(path_end_hook=DFSCoveragePathEndHook(coverage_filename)))
 progress=0
 
 # m.run()
@@ -428,6 +445,7 @@ while len(m.active) > 0:
             if pdb_stopping_condition():
                 # radar_breakpoint()
                 pdb.set_trace()
+                pass
         except angr.SimEngineError as e:
             print(str(e))
             print("Disassembly not available")
@@ -441,6 +459,7 @@ while len(m.active) > 0:
             print("Disassembly not available")
         try:
             #step_start_time = datetime.now()
+            record_bb(m.active[0].addr)
             m.step()
             #cProfile.run('m.step()')
             #step_end_time = datetime.now()

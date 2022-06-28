@@ -70,6 +70,7 @@ class HeapState:
         self.top.size = STARTING_SIZE-8784
         self.top.address = startAddress
         self.top.is_top = True
+        self.MAX_ALLOCATION_SIZE = (1<<30) * 4
 
     #returns None if such chunk is not present
     def get_chunk_at_offset(self, ad, of):

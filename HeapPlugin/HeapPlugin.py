@@ -13,7 +13,7 @@ import pdb
 import sys
 
 l = logging.getLogger('heap_analysis')
-vl = logging.getLogger('vuln_logger');
+vl = logging.getLogger('vuln_logger')
 
 MAX_MALLOC_SIZE = 1<<30
 
@@ -68,6 +68,8 @@ class Malloc(SimProcedure):
         print(f'rip {rip:x} malloc requested {Malloc.i} with requst_size {s}, allocated size {hs.request2size(s)}, heap state before')
         # hs.dump()
         try:
+            if s > hs.MAX_ALLOCATION_SIZE:
+                raise Vulnerability("Requested more than max allocation (Can be exploited)")
             addr = hs.malloc(s)
             if(not is_consistent(hs)):
                 inconsistent_breakpoint()
@@ -96,9 +98,11 @@ class Calloc(SimProcedure):
         n = self.state.solver.eval(num)
         hs = self.state.my_heap.heap_state
         rip = self.state.solver.eval(self.state.regs.rip)
-        print(f'rip {rip:x} calloc requested {Calloc.i} {n} objects with with size {hs.request2size(s)} heap state before call: ')
+        print(f'rip {rip:x} calloc {Calloc.i} requested  {n} objects with with size {hs.request2size(s)} heap state before call: ')
         # hs.dump()
         try:
+            if n*s > hs.MAX_ALLOCATION_SIZE:
+                raise Vulnerability("Requested more than max allocation by Calloc (Can be exploited) at address", hex(rip))
             addr = hs.malloc(n*s)
             self.memset_zero(addr, n*s)
             if(not is_consistent(hs)):
@@ -108,8 +112,9 @@ class Calloc(SimProcedure):
         except Vulnerability as V:
             print(V.msg, V.addr)
             l.warning(V.msg + " @ " + str(V.addr))
-            vl.warning('vlraised warning', V.msg + " @ " + str(V.addr))
+            vl.warning('vlraised warning'+ V.msg + " @ " + str(V.addr))
             dump_concretized_file(self.state)
+            pdb.set_trace()
         print(f'rip {rip:x} calloc called {Calloc.i} with size {hs.request2size(s)}, allocated at 0x{addr:x}')
         if(utils.DEBUG):
             debug_dump(self.state, "== After Calloc ==")
@@ -167,6 +172,8 @@ class Realloc(SimProcedure):
             # TODO mmapped chunk logic
             # todo if single thread (check)
             try:
+                if nb > hs.MAX_ALLOCATION_SIZE:
+                    raise Vulnerability("Requested more than max allocation (Can be exploited)")
                 newp = hs.realloc(oldp, old_size, nb)
                 if(not is_consistent(hs)):
                     inconsistent_breakpoint()
