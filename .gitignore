@@ -11,4 +11,4 @@ Outputs
 *.idea
 venv
 *.pyc
-./benchmarks/*
+benchmarks/*
