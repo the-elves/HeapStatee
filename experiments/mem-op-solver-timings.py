@@ -12,8 +12,9 @@ import pickle
 class Error(angr.SimProcedure):
     def run(self,status, error_num):
         error_no = self.state.solver.eval(error_num)
-        print("Errored and exited", error_no)
-        self.exit(error_num) 
+        if error_no != 0:
+            print("Errored and exited", error_no)
+            self.exit(error_num) 
 
 class SetLocale(angr.SimProcedure):
     def run(self):
@@ -41,6 +42,7 @@ class Fuzzer:
     visited_addresses = []
     argv = []
     num_ended = 0
+    num_errored = 0
 
     def __init__(self, path: Path):
         self.binary_path = path
@@ -67,7 +69,7 @@ class Fuzzer:
         # s.inspect.b("call", when=angr.BP_BEFORE, action=self.call)
         # s.inspect.b("return", when=angr.BP_BEFORE, action=self.ret)
         self.project.hook_symbol("setlocale", SetLocale())
-        self.project.hook_symbol("error", Error())
+        # self.project.hook_symbol("error", angr.SIM_PROCEDURES['libc']['error'])
         return s
 
     def link_concrete_file(self, state: angr.SimState, path:Path):
@@ -131,7 +133,8 @@ class Fuzzer:
         # if stdin == b'' and stdout == b'' and stderr == b'':
         #     return
         self.print_args(state, 5)
-        print("STDIN", state.posix.stdin.concretize())
+        print(hex(state.addr))
+        print("\nSTDIN", state.posix.stdin.concretize())
         print("STDOUT", state.posix.stdout.concretize())
         print("STDERR", state.posix.stderr.concretize())
     
@@ -152,15 +155,22 @@ class Fuzzer:
         self.mgr.deferred.append(current_addr)
 
     def print_args(self, state, len=100):
-        print("ARGV", [chr(state.solver.eval(v)) for v in self.argv[:len]])
+        print([chr(state.solver.eval(v)) for v in self.argv[:len]])
 
     def check_finished_states(self):
         if len(self.mgr.deadended) > self.num_ended:
-            print("Found deadended")
-            finished_state = self.mgr.deadended[-1]
+            print("Dead ended")
+            self.dump_state(self.mgr.deadended[-1])
             self.num_ended+=1
-            self.dump_state(finished_state)
-            # input()
+        if len(self.mgr.errored) > self.num_errored:
+            print("Errored")
+            print(e.error)
+            self.dump_state(self.mgr.errored[-1])
+            self.num_errored += 1
+        # if len(self.mgr.deadended) > 0:
+        #     self.mgr.deadended.pop()
+        # if len(self.mgr.errored) > 0:
+        #     self.mgr.errored.pop()
             
     def run(self):
         while len(self.mgr.active) > 0:
@@ -169,11 +179,12 @@ class Fuzzer:
             #     self.shuffle_mgr()
             # else:
             #     self.visited_addresses.append(current_addr)
-            # print(self.mgr)
-            # self.mgr.active[0].block().pp()
+            print(f"\r {hex(self.mgr.active[0].addr)} {self.mgr}", end = "")
+            self.mgr.active[0].block().pp()
             # self.print_args(self.mgr.active[0], 5)
-            self.dump_state(self.mgr.active[0])
+            # self.dump_state(self.mgr.active[0])
             # input()
+            # print(f"\r {hex(self.mgr.active[0].addr)}", end="")
             self.mgr.step()
             self.check_finished_states()
             # print("============================")
