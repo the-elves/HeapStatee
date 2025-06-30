@@ -7,7 +7,9 @@ from typing import Any, List
 import argparse
 import claripy
 import pickle
-
+import traceback
+import os
+import random
 
 class Error(angr.SimProcedure):
     def run(self,status, error_num):
@@ -15,6 +17,19 @@ class Error(angr.SimProcedure):
         if error_no != 0:
             print("Errored and exited", error_no)
             self.exit(error_num) 
+
+class DCGetText(angr.SimProcedure):
+    def run(self,domain, msg, category):
+        self.ret( msg)
+
+class FPrinfChk(angr.SimProcedure):
+    def run(self, file, flag, fmt, arg1, arg2, arg3, arg4, arg5):
+        self.inline_call(angr.SIM_PROCEDURES['libc']['fprintf'], file, fmt, 
+                         arg1, 
+                         arg2, 
+                         arg3,
+                         arg4, 
+                         arg5)
 
 class SetLocale(angr.SimProcedure):
     def run(self):
@@ -43,9 +58,12 @@ class Fuzzer:
     argv = []
     num_ended = 0
     num_errored = 0
+    loader_libs = []
 
     def __init__(self, path: Path):
         self.binary_path = path
+        self.loader_libs.append("./libs/libc.so.6")
+        random.seed(100)
         self.setup()
         
     def get_called_function_name(self, state, addr):
@@ -68,8 +86,13 @@ class Fuzzer:
     def hook_procedures(self, s: angr.SimState) -> angr.SimState:
         # s.inspect.b("call", when=angr.BP_BEFORE, action=self.call)
         # s.inspect.b("return", when=angr.BP_BEFORE, action=self.ret)
+        # self.project.hook_symbol("setlocale", SetLocale())
+        self.project.hook_symbol("__fprintf_chk", FPrinfChk())
+        self.project.hook_symbol("error", Error())
+        self.project.hook_symbol("dcgettext", DCGetText())
         self.project.hook_symbol("setlocale", SetLocale())
-        # self.project.hook_symbol("error", angr.SIM_PROCEDURES['libc']['error'])
+        self.project.hook_symbol("_IO_vfwprintf", angr.SIM_PROCEDURES['libc']['fprintf']())
+        self.project.hook_symbol("_IO_vfprintf", angr.SIM_PROCEDURES['libc']['fprintf']())
         return s
 
     def link_concrete_file(self, state: angr.SimState, path:Path):
@@ -93,14 +116,15 @@ class Fuzzer:
         print("dumping cfg at ", cfg_path.as_posix())
 
     def setup(self):
-        self.project = angr.Project(self.binary_path)
+        self.project = angr.Project(self.binary_path, force_load_libs = self.loader_libs)
         self.gen_cfg()
         print("Loaded libraries: ", self.project.loader.all_objects)
         print("Use simprocedures", self.project.use_sim_procedures)
-        self.argv = [claripy.BVS("inp_"+str(i),8) for i in range(100) ]
-
-        init_state = self.hook_procedures(self.project.factory.entry_state(args = self.argv) )
-        # init_state.options['ALL_FILES_EXIST'] = False
+        self.argv = [claripy.BVS("inp_"+str(i),8*20) for i in range(4) ]
+        args = ["tr"] + self.argv #+["asdf", "qwer"]
+        init_state = self.project.factory.entry_state(args = args, stdin=claripy.BVS("stdin", 8*10), env=os.environ)
+        init_state = self.hook_procedures(init_state)
+        init_state.options['ALL_FILES_EXIST'] = False
         init_state.libc.max_variable_size = 0x2048
         
         
@@ -128,45 +152,83 @@ class Fuzzer:
         print("----- call stack start -----")
 
     def dump_state(self, state: angr.SimState):
-
+        print()
+        state.block().pp()
         self.dump_callstack(state)
         # if stdin == b'' and stdout == b'' and stderr == b'':
         #     return
         self.print_args(state, 5)
         print(hex(state.addr))
-        print("\nSTDIN", state.posix.stdin.concretize())
-        print("STDOUT", state.posix.stdout.concretize())
-        print("STDERR", state.posix.stderr.concretize())
+        print("STDIN:", end="")
+        try: 
+            s = state.posix.dumps(0).decode()
+            print(s)
+        except Exception:
+            print(state.posix.dumps(0))
+        print("STDOUT:", end="")
+        try: 
+            s = state.posix.dumps(1).decode()
+            print(s)
+        except Exception:
+            print(state.posix.dumps(1))
+        print("STDERR:", end="")
+        try: 
+            s = state.posix.dumps(2).decode()
+            print(s)
+        except Exception:
+            print(state.posix.dumps(2))
     
     def shuffle_mgr(self):
         if len(self.mgr.deferred) == 0:
             return
-        new_active = None
-        for s in self.mgr.deferred:
-            if s.addr in self.visited_addresses:
-                continue
-            new_active = s
-            break
+        new_active = self.mgr.deferred[-1]
+        # for s in self.mgr.deferred:
+        #     if s.addr in self.visited_addresses:
+        #         continue
+        #     new_active = s
+        #     break
         if new_active is None:
             return
-        current_addr = self.mgr.active.pop()
+        current_state = self.mgr.active.pop()
         self.mgr.deferred.remove(new_active)
         self.mgr.active.append(new_active)
-        self.mgr.deferred.append(current_addr)
+        self.mgr.deferred.append(current_state)
 
-    def print_args(self, state, len=100):
-        print([chr(state.solver.eval(v)) for v in self.argv[:len]])
+    def print_args(self, state:angr.SimState, len=100):
+        argc = state.solver.eval(state.posix.argc)
+        pargv = state.posix.argv
+        for i in range(argc):
+            arg_i = state.mem[pargv+i*state.arch.byte_width].uint64_t.resolved
+            print(f"ARGV{i}: '", end="")
+            j=0
+            while True:
+                arg_i_j = state.solver.eval(state.mem[arg_i+j].uint8_t.resolved)
+                if arg_i_j == 0:
+                    break
+                print(chr(arg_i_j), end="")
+                j+=1
+            print(end="'         ")
+        print()
+
 
     def check_finished_states(self):
-        if len(self.mgr.deadended) > self.num_ended:
+        if len(self.mgr.deadended) > 1:
             print("Dead ended")
             self.dump_state(self.mgr.deadended[-1])
-            self.num_ended+=1
-        if len(self.mgr.errored) > self.num_errored:
+            self.mgr.deadended.pop()
+            del self.mgr.deadended[-1]
+            print("deleted deadended")
+            print(self.mgr)
+        if len(self.mgr.errored) > 1:
             print("Errored")
-            print(e.error)
-            self.dump_state(self.mgr.errored[-1])
-            self.num_errored += 1
+            try:
+                raise self.mgr.errored[-1].error
+            except Exception:
+                print(traceback.format_exc())
+            self.dump_state(self.mgr.errored[-1].state)
+            self.mgr.errored.pop()
+            del self.mgr.errored[-1]
+            print("deleted errored")
         # if len(self.mgr.deadended) > 0:
         #     self.mgr.deadended.pop()
         # if len(self.mgr.errored) > 0:
@@ -174,13 +236,13 @@ class Fuzzer:
             
     def run(self):
         while len(self.mgr.active) > 0:
-            # current_addr = self.mgr.active[0].addr
-            # if current_addr in self.visited_addresses:
-            #     self.shuffle_mgr()
-            # else:
-            #     self.visited_addresses.append(current_addr)
+            current_addr = self.mgr.active[0].addr
+            if current_addr in self.visited_addresses:
+                self.shuffle_mgr()
+            else:
+                self.visited_addresses.append(current_addr)
             print(f"\r {hex(self.mgr.active[0].addr)} {self.mgr}", end = "")
-            self.mgr.active[0].block().pp()
+            # self.mgr.active[0].block().pp()
             # self.print_args(self.mgr.active[0], 5)
             # self.dump_state(self.mgr.active[0])
             # input()
@@ -188,7 +250,7 @@ class Fuzzer:
             self.mgr.step()
             self.check_finished_states()
             # print("============================")
-
+        print(self.mgr)
         for s in self.mgr.deadended:
             self.dump_state(s)
 
