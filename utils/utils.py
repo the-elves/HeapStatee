@@ -116,7 +116,10 @@ def dump_state(state, state_name=None):
         fname += b.filename.split('/')[-1] + '-state-'+time
 
     with open(fname,'wb') as f:
-        pickle.dump(state, f)
+        try:
+            pickle.dump(state, f)
+        except Exception as e:
+            print(f"[-] Failed to dump state: {e}")
 
 def load_state(state_name):
     with open(state_name, 'rb') as f:
@@ -127,7 +130,10 @@ def dump_checkpoint(m, cp_name=None):
     if cp_name is None:
         cp_name = str(hex(m.active[0].addr))+'.ckp'
     with open(cp_name, 'wb') as f:
-        pickle.dump(m.stashes, f)
+        try:
+            pickle.dump(m.stashes, f)
+        except Exception as e:
+            print(f"[-] Failed to dump checkpoint: {e}")
 
 
 def load_checkpoint(cp_name):

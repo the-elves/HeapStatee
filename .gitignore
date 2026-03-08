@@ -12,3 +12,4 @@ Outputs
 venv
 *.pyc
 benchmarks/*
+experiments/results/*
